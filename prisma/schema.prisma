@@ -1,0 +1,718 @@
+// ============================================================================
+// Association Management System (AMS) — Prisma Schema
+// Multi-tenant SaaS platform. Every tenant-owned model carries an
+// `associationId` foreign key so tenant data can never leak across
+// associations. Application-layer queries MUST always filter by the
+// authenticated user's associationId (see src/server/db/tenant.ts once
+// built) — Postgres Row Level Security can be layered on later for
+// defense in depth, but the schema-level FK + index is the baseline.
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum UserStatus {
+  ACTIVE
+  INVITED
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum AssociationType {
+  CLUB
+  UNION
+  PROFESSIONAL_BODY
+  ALUMNI
+  COMMUNITY
+  COOPERATIVE
+  RELIGIOUS
+  OTHER
+}
+
+enum AssociationStatus {
+  TRIAL
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum MembershipStatus {
+  PENDING
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  EXPELLED
+  ALUMNI
+}
+
+enum ApplicationStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+enum BranchStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ExecutiveAppointmentStatus {
+  ACTIVE
+  COMPLETED
+  REMOVED
+}
+
+enum MeetingType {
+  GENERAL
+  EXECUTIVE
+  BRANCH
+  COMMITTEE
+  EMERGENCY
+}
+
+enum MeetingStatus {
+  SCHEDULED
+  ONGOING
+  COMPLETED
+  CANCELLED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  EXCUSED
+  LATE
+}
+
+enum PaymentCategoryType {
+  DUES
+  CONTRIBUTION
+  LEVY
+  EVENT
+  DONATION
+  FINE
+  OTHER
+}
+
+enum PaymentFrequency {
+  ONE_OFF
+  MONTHLY
+  QUARTERLY
+  ANNUALLY
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  CARD
+  USSD
+  OTHER
+}
+
+enum FineStatus {
+  PENDING
+  PAID
+  WAIVED
+  CANCELLED
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+  COMPLETED
+}
+
+enum AnnouncementAudience {
+  ALL_MEMBERS
+  EXECUTIVES_ONLY
+  BRANCH_ONLY
+}
+
+enum AnnouncementStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum DocumentCategory {
+  CONSTITUTION
+  MINUTES
+  FINANCIAL_REPORT
+  POLICY
+  CERTIFICATE
+  OTHER
+}
+
+enum DocumentVisibility {
+  PUBLIC
+  MEMBERS_ONLY
+  EXECUTIVES_ONLY
+  ADMIN_ONLY
+}
+
+enum NotificationType {
+  INFO
+  PAYMENT
+  ANNOUNCEMENT
+  MEETING
+  FINE
+  SYSTEM
+}
+
+// ============================================================================
+// IDENTITY (global — a User account can hold Memberships in many Associations)
+// ============================================================================
+
+model User {
+  id           String     @id @default(cuid())
+  name         String
+  email        String     @unique
+  phone        String?
+  passwordHash String?
+  avatarUrl    String?
+  isSuperAdmin Boolean    @default(false)
+  status       UserStatus @default(ACTIVE)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  memberships        Membership[]
+  reviewedApplications MembershipApplication[]  @relation("ApplicationReviewer")
+  createdMeetings    Meeting[]                @relation("MeetingCreatedBy")
+  recordedPayments   Payment[]                @relation("PaymentRecordedBy")
+  issuedFines        Fine[]                   @relation("FineIssuedBy")
+  waivedFines        Fine[]                   @relation("FineWaivedBy")
+  recordedTransactions FinancialTransaction[]  @relation("TransactionRecordedBy")
+  createdEvents      Event[]                  @relation("EventCreatedBy")
+  authoredAnnouncements Announcement[]         @relation("AnnouncementAuthor")
+  uploadedDocuments  Document[]               @relation("DocumentUploadedBy")
+  appointedExecutives ExecutiveAppointment[]   @relation("ExecutiveAppointedBy")
+  auditLogs          AuditLog[]
+  notifications      Notification[]
+
+  @@index([email])
+}
+
+// ============================================================================
+// TENANT ROOT
+// ============================================================================
+
+model Association {
+  id           String            @id @default(cuid())
+  name         String
+  slug         String            @unique
+  type         AssociationType   @default(OTHER)
+  description  String?
+  logoUrl      String?
+  address      String?
+  state        String?
+  country      String            @default("Nigeria")
+  currency     String            @default("NGN")
+  contactEmail String?
+  contactPhone String?
+  status       AssociationStatus @default(TRIAL)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  memberships           Membership[]
+  membershipApplications MembershipApplication[]
+  roles                 Role[]
+  branches              Branch[]
+  executivePositions    ExecutivePosition[]
+  meetings              Meeting[]
+  paymentCategories     PaymentCategory[]
+  payments              Payment[]
+  fines                 Fine[]
+  financialTransactions FinancialTransaction[]
+  events                Event[]
+  announcements         Announcement[]
+  documents             Document[]
+  auditLogs             AuditLog[]
+  notifications         Notification[]
+
+  @@index([slug])
+}
+
+// ============================================================================
+// RBAC — permissions are global keys; roles are scoped per association
+// (associationId = null marks the single platform-wide SUPER_ADMIN role).
+// Never hard-code role checks: check permission keys via RolePermission.
+// ============================================================================
+
+model Permission {
+  id          String   @id @default(cuid())
+  key         String   @unique // e.g. "members.view", "finance.manage"
+  category    String // grouping for UI, e.g. "Members", "Finance"
+  description String?
+  createdAt   DateTime @default(now())
+
+  rolePermissions RolePermission[]
+
+  @@index([category])
+}
+
+model Role {
+  id            String   @id @default(cuid())
+  associationId String? // null = system-wide role (Super Admin)
+  key           String // stable slug, e.g. "CHAIRMAN", "TREASURER"
+  name          String // display name
+  description   String?
+  isSystem      Boolean  @default(true) // seeded default vs. custom role
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  association       Association?        @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  rolePermissions    RolePermission[]
+  memberships        Membership[]
+  executivePositions ExecutivePosition[]
+
+  @@unique([associationId, key])
+  @@index([associationId])
+}
+
+model RolePermission {
+  id           String   @id @default(cuid())
+  roleId       String
+  permissionId String
+  createdAt    DateTime @default(now())
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([permissionId])
+}
+
+// ============================================================================
+// MEMBERSHIP
+// ============================================================================
+
+model Membership {
+  id               String           @id @default(cuid())
+  associationId    String
+  userId           String
+  branchId         String?
+  roleId           String
+  membershipNumber String
+  status           MembershipStatus @default(PENDING)
+  joinedAt         DateTime         @default(now())
+  leftAt           DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  association Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch      Branch?     @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  role        Role        @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  executiveAppointments ExecutiveAppointment[]
+  attendances           Attendance[]
+  payments              Payment[]
+  fines                 Fine[]
+  resultingApplication  MembershipApplication?
+
+  @@unique([associationId, userId])
+  @@unique([associationId, membershipNumber])
+  @@index([associationId])
+  @@index([branchId])
+  @@index([roleId])
+}
+
+model MembershipApplication {
+  id                   String            @id @default(cuid())
+  associationId        String
+  branchId             String?
+  applicantUserId      String?
+  fullName             String
+  email                String
+  phone                String?
+  status               ApplicationStatus @default(PENDING)
+  notes                String?
+  appliedAt            DateTime          @default(now())
+  reviewedById         String?
+  reviewedAt           DateTime?
+  reviewNotes          String?
+  resultingMembershipId String?          @unique
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  association         Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  branch              Branch?     @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  reviewedBy          User?       @relation("ApplicationReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  resultingMembership Membership? @relation(fields: [resultingMembershipId], references: [id], onDelete: SetNull)
+
+  @@index([associationId])
+  @@index([status])
+}
+
+// ============================================================================
+// BRANCHES & EXECUTIVES
+// ============================================================================
+
+model Branch {
+  id              String       @id @default(cuid())
+  associationId   String
+  name            String
+  code            String
+  address         String?
+  state           String?
+  isHeadquarters  Boolean      @default(false)
+  status          BranchStatus @default(ACTIVE)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  association          Association             @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  memberships          Membership[]
+  membershipApplications MembershipApplication[]
+  executivePositions   ExecutivePosition[]
+  meetings             Meeting[]
+  events               Event[]
+  announcements        Announcement[]
+  documents            Document[]
+
+  @@unique([associationId, code])
+  @@index([associationId])
+}
+
+model ExecutivePosition {
+  id              String   @id @default(cuid())
+  associationId   String
+  branchId        String? // null = association-level office
+  roleId          String? // role granted to whoever holds this position
+  title           String
+  order           Int      @default(0)
+  termLengthMonths Int?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  association  Association             @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  branch       Branch?                 @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  role         Role?                   @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  appointments ExecutiveAppointment[]
+
+  @@unique([associationId, branchId, title])
+  @@index([associationId])
+}
+
+model ExecutiveAppointment {
+  id                  String                     @id @default(cuid())
+  executivePositionId String
+  membershipId        String
+  startDate           DateTime                   @default(now())
+  endDate             DateTime?
+  status              ExecutiveAppointmentStatus @default(ACTIVE)
+  appointedById       String?
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
+
+  executivePosition ExecutivePosition @relation(fields: [executivePositionId], references: [id], onDelete: Cascade)
+  membership        Membership        @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  appointedBy        User?            @relation("ExecutiveAppointedBy", fields: [appointedById], references: [id], onDelete: SetNull)
+
+  @@index([executivePositionId])
+  @@index([membershipId])
+}
+
+// ============================================================================
+// MEETINGS & ATTENDANCE
+// ============================================================================
+
+model Meeting {
+  id            String        @id @default(cuid())
+  associationId String
+  branchId      String?
+  title         String
+  description   String?
+  type          MeetingType   @default(GENERAL)
+  scheduledAt   DateTime
+  endedAt       DateTime?
+  location      String?
+  isVirtual     Boolean       @default(false)
+  meetingLink   String?
+  status        MeetingStatus @default(SCHEDULED)
+  createdById   String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  association Association  @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  branch      Branch?      @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  createdBy   User?        @relation("MeetingCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  attendances Attendance[]
+
+  @@index([associationId])
+  @@index([scheduledAt])
+}
+
+model Attendance {
+  id           String           @id @default(cuid())
+  meetingId    String
+  membershipId String
+  status       AttendanceStatus @default(ABSENT)
+  checkInAt    DateTime?
+  remarks      String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  meeting    Meeting    @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@unique([meetingId, membershipId])
+  @@index([membershipId])
+}
+
+// ============================================================================
+// FINANCE — all monetary columns use Decimal(14,2), never Float, to avoid
+// floating-point rounding errors in currency math.
+// ============================================================================
+
+model PaymentCategory {
+  id             String              @id @default(cuid())
+  associationId  String
+  name           String
+  type           PaymentCategoryType @default(OTHER)
+  defaultAmount  Decimal?            @db.Decimal(14, 2)
+  isRecurring    Boolean             @default(false)
+  frequency      PaymentFrequency?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  association Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  payments    Payment[]
+  events      Event[]
+
+  @@unique([associationId, name])
+  @@index([associationId])
+}
+
+model Payment {
+  id                String        @id @default(cuid())
+  associationId     String
+  membershipId      String
+  paymentCategoryId String
+  amount            Decimal       @db.Decimal(14, 2)
+  currency          String        @default("NGN")
+  status            PaymentStatus @default(PENDING)
+  method            PaymentMethod @default(CASH)
+  reference         String        @unique
+  paidAt            DateTime?
+  dueDate           DateTime?
+  periodStart       DateTime?
+  periodEnd         DateTime?
+  notes             String?
+  recordedById      String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  association         Association          @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  membership          Membership           @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  paymentCategory     PaymentCategory      @relation(fields: [paymentCategoryId], references: [id], onDelete: Restrict)
+  recordedBy          User?                @relation("PaymentRecordedBy", fields: [recordedById], references: [id], onDelete: SetNull)
+  fine                Fine?
+  financialTransaction FinancialTransaction?
+
+  @@index([associationId])
+  @@index([membershipId])
+  @@index([status])
+}
+
+model Fine {
+  id            String     @id @default(cuid())
+  associationId String
+  membershipId  String
+  reason        String
+  amount        Decimal    @db.Decimal(14, 2)
+  status        FineStatus @default(PENDING)
+  issuedById    String?
+  issuedAt      DateTime   @default(now())
+  dueDate       DateTime?
+  waivedById    String?
+  waivedReason  String?
+  relatedPaymentId String? @unique
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  association    Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  membership     Membership  @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  issuedBy       User?       @relation("FineIssuedBy", fields: [issuedById], references: [id], onDelete: SetNull)
+  waivedBy       User?       @relation("FineWaivedBy", fields: [waivedById], references: [id], onDelete: SetNull)
+  relatedPayment Payment?    @relation(fields: [relatedPaymentId], references: [id], onDelete: SetNull)
+
+  @@index([associationId])
+  @@index([membershipId])
+  @@index([status])
+}
+
+model FinancialTransaction {
+  id                 String          @id @default(cuid())
+  associationId      String
+  type               TransactionType
+  category           String // e.g. "Membership Dues", "Venue Rental"
+  amount             Decimal         @db.Decimal(14, 2)
+  currency           String          @default("NGN")
+  description        String?
+  transactionDate    DateTime        @default(now())
+  recordedById       String?
+  sourcePaymentId    String?         @unique
+  receiptDocumentId  String?         @unique
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  association     Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  recordedBy      User?       @relation("TransactionRecordedBy", fields: [recordedById], references: [id], onDelete: SetNull)
+  sourcePayment   Payment?    @relation(fields: [sourcePaymentId], references: [id], onDelete: SetNull)
+  receiptDocument Document?   @relation(fields: [receiptDocumentId], references: [id], onDelete: SetNull)
+
+  @@index([associationId])
+  @@index([type])
+  @@index([transactionDate])
+}
+
+// ============================================================================
+// EVENTS & ANNOUNCEMENTS
+// ============================================================================
+
+model Event {
+  id                String      @id @default(cuid())
+  associationId     String
+  branchId          String?
+  title             String
+  description       String?
+  startAt           DateTime
+  endAt             DateTime?
+  location          String?
+  isVirtual         Boolean     @default(false)
+  virtualLink       String?
+  coverImageUrl     String?
+  requiresPayment   Boolean     @default(false)
+  paymentCategoryId String?
+  capacity          Int?
+  status            EventStatus @default(DRAFT)
+  createdById       String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  association     Association      @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  branch          Branch?          @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  paymentCategory PaymentCategory? @relation(fields: [paymentCategoryId], references: [id], onDelete: SetNull)
+  createdBy       User?            @relation("EventCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([associationId])
+  @@index([startAt])
+}
+
+model Announcement {
+  id            String               @id @default(cuid())
+  associationId String
+  branchId      String?
+  title         String
+  body          String
+  authorId      String?
+  audience      AnnouncementAudience @default(ALL_MEMBERS)
+  isPinned      Boolean              @default(false)
+  publishedAt   DateTime?
+  expiresAt     DateTime?
+  status        AnnouncementStatus   @default(DRAFT)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  association Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  branch      Branch?     @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  author      User?       @relation("AnnouncementAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([associationId])
+  @@index([status])
+}
+
+// ============================================================================
+// DOCUMENTS
+// ============================================================================
+
+model Document {
+  id             String             @id @default(cuid())
+  associationId  String
+  branchId       String?
+  title          String
+  description    String?
+  fileUrl        String
+  fileType       String?
+  fileSizeBytes  Int?
+  category       DocumentCategory   @default(OTHER)
+  visibility     DocumentVisibility @default(MEMBERS_ONLY)
+  uploadedById   String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  association          Association            @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  branch               Branch?                @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  uploadedBy           User?                  @relation("DocumentUploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
+  financialTransaction FinancialTransaction?
+
+  @@index([associationId])
+  @@index([category])
+}
+
+// ============================================================================
+// AUDIT & NOTIFICATIONS
+// ============================================================================
+
+model AuditLog {
+  id            String   @id @default(cuid())
+  associationId String? // null for platform-level / super-admin actions
+  userId        String?
+  action        String // e.g. "MEMBER_CREATED", "PAYMENT_RECORDED"
+  entityType    String
+  entityId      String?
+  metadata      Json?
+  ipAddress     String?
+  createdAt     DateTime @default(now())
+
+  association Association? @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  user        User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([associationId])
+  @@index([userId])
+  @@index([entityType, entityId])
+}
+
+model Notification {
+  id            String           @id @default(cuid())
+  userId        String
+  associationId String?
+  title         String
+  body          String
+  type          NotificationType @default(INFO)
+  isRead        Boolean          @default(false)
+  readAt        DateTime?
+  link          String?
+  createdAt     DateTime         @default(now())
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  association Association? @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([associationId])
+}
