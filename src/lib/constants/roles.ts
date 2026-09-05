@@ -1,39 +1,37 @@
 /**
- * Stable role keys seeded for every association (except SUPER_ADMIN, which
- * is a single platform-wide role with associationId = null).
+ * `Role` = a stable PERMISSION TIER — what someone is allowed to do.
  *
- * These keys are the contract between the seed script, the permission
- * matrix, and any UI that needs to special-case a role (e.g. showing a
- * "Chairman" badge). Actual authorization decisions should check
- * PERMISSIONS via a user's RolePermission set — never `role.key === "..."`
- * scattered through the app.
+ * This is deliberately a small, fixed set. It is NOT where leadership
+ * titles like "Chairman" or "Treasurer" live — those are association-
+ * configurable ExecutivePosition titles instead (see
+ * src/lib/constants/executive-positions.ts), each optionally linked to one
+ * of these tiers via ExecutivePosition.roleId. An association renaming or
+ * adding a leadership title never touches this file or the Role table.
+ *
+ * Actual authorization decisions should check PERMISSIONS via a user's
+ * RolePermission set (see src/server/permissions/has-permission.ts) —
+ * never `role.key === "..."` scattered through the app.
  */
-export const SYSTEM_ROLE_KEYS = {
+export const PERMISSION_TIER_KEYS = {
+  /** Platform-wide, cross-association. associationId = null on this Role. */
   SUPER_ADMIN: "SUPER_ADMIN",
+  /** Full control within one association (except platform administration). */
   ASSOCIATION_ADMIN: "ASSOCIATION_ADMIN",
-  CHAIRMAN: "CHAIRMAN",
-  VICE_CHAIRMAN: "VICE_CHAIRMAN",
-  SECRETARY: "SECRETARY",
-  ASSISTANT_SECRETARY: "ASSISTANT_SECRETARY",
-  TREASURER: "TREASURER",
-  FINANCIAL_SECRETARY: "FINANCIAL_SECRETARY",
+  /** Day-to-day operational tier most executive positions should carry. */
+  STAFF: "STAFF",
+  /** Read-only oversight tier (finance, reports, audit log). */
   AUDITOR: "AUDITOR",
-  PRO: "PRO",
+  /** Baseline tier every ordinary member holds. */
   MEMBER: "MEMBER",
 } as const;
 
-export type SystemRoleKey = (typeof SYSTEM_ROLE_KEYS)[keyof typeof SYSTEM_ROLE_KEYS];
+export type PermissionTierKey =
+  (typeof PERMISSION_TIER_KEYS)[keyof typeof PERMISSION_TIER_KEYS];
 
-/** Roles seeded per-association (everything except the platform-wide Super Admin). */
-export const ASSOCIATION_SCOPED_ROLE_KEYS: SystemRoleKey[] = [
-  SYSTEM_ROLE_KEYS.ASSOCIATION_ADMIN,
-  SYSTEM_ROLE_KEYS.CHAIRMAN,
-  SYSTEM_ROLE_KEYS.VICE_CHAIRMAN,
-  SYSTEM_ROLE_KEYS.SECRETARY,
-  SYSTEM_ROLE_KEYS.ASSISTANT_SECRETARY,
-  SYSTEM_ROLE_KEYS.TREASURER,
-  SYSTEM_ROLE_KEYS.FINANCIAL_SECRETARY,
-  SYSTEM_ROLE_KEYS.AUDITOR,
-  SYSTEM_ROLE_KEYS.PRO,
-  SYSTEM_ROLE_KEYS.MEMBER,
+/** Permission tiers seeded per-association (everything except the platform-wide Super Admin). */
+export const ASSOCIATION_SCOPED_PERMISSION_TIER_KEYS: PermissionTierKey[] = [
+  PERMISSION_TIER_KEYS.ASSOCIATION_ADMIN,
+  PERMISSION_TIER_KEYS.STAFF,
+  PERMISSION_TIER_KEYS.AUDITOR,
+  PERMISSION_TIER_KEYS.MEMBER,
 ];

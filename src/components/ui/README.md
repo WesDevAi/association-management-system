@@ -1,7 +1,7 @@
 # components/ui/
 
-Reserved for shadcn/ui primitives (Button, Input, Card, etc.). Not
-populated yet: this sandbox cannot reach `ui.shadcn.com` to run
-`npx shadcn add <component>`. Run that command locally in Phase 2+ once
-dashboard UI work begins — `components.json` below is already configured
-for it.
+shadcn/ui-style primitives. `button.tsx`, `input.tsx`, `label.tsx`, and
+`card.tsx` were hand-written here (not via the shadcn CLI, which needs
+`ui.shadcn.com` — unreachable in the sandbox this was built in) but match
+shadcn's exact component API, so running `npx shadcn add button` etc. later
+will just replace them with the canonical version with no call-site changes.

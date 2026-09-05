@@ -2,19 +2,29 @@
  * Seeds reference data required for the RBAC system to function:
  *   - the global Permission catalog
  *   - the platform-wide SUPER_ADMIN role
- *   - the default permission matrix for the roles every new association
- *     gets seeded with (see src/lib/constants/roles.ts)
+ *   - the default permission matrix for the small set of PERMISSION TIERS
+ *     every new association gets seeded with (see src/lib/constants/roles.ts)
+ *
+ * Corrected per the Phase 2 audit / Phase 2.1 approved fix: leadership
+ * titles (Chairman, Treasurer, Secretary, etc.) are NOT seeded here as
+ * separate permission-bearing roles. They belong to the `ExecutivePosition`
+ * table instead — a per-association, freely-nameable list (see
+ * src/lib/constants/executive-positions.ts for the starter titles an
+ * association-provisioning service should create) — each optionally linked
+ * to one of the permission tiers below via `ExecutivePosition.roleId`.
  *
  * This is config/reference data, not fake demo content — no associations,
- * users, or members are created here. Per-association role rows are
- * created when an association is provisioned (Phase 2+), reusing this
- * permission matrix.
+ * users, or members are created here. Per-association Role rows (and
+ * starter ExecutivePosition rows) are created when an association is
+ * provisioned (Phase 3+), reusing DEFAULT_ROLE_PERMISSIONS from this file
+ * as the starting permission matrix.
  *
  * Run with: npm run db:seed
  */
 import { PrismaClient } from "@prisma/client";
 import { PERMISSIONS, type PermissionKey } from "../src/lib/constants/permissions";
-import { SYSTEM_ROLE_KEYS, type SystemRoleKey } from "../src/lib/constants/roles";
+import { PERMISSION_TIER_KEYS } from "../src/lib/constants/roles";
+import { DEFAULT_ROLE_PERMISSIONS } from "../src/lib/constants/default-role-permissions";
 
 const prisma = new PrismaClient();
 
@@ -41,84 +51,6 @@ const PERMISSION_CATALOG: { key: PermissionKey; category: string; description: s
   { key: PERMISSIONS.PLATFORM_MANAGE_ASSOCIATIONS, category: "Platform", description: "Create and manage associations across the platform" },
 ];
 
-/** Default permission grants for each association-scoped role. */
-const DEFAULT_ROLE_PERMISSIONS: Record<SystemRoleKey, PermissionKey[]> = {
-  [SYSTEM_ROLE_KEYS.SUPER_ADMIN]: Object.values(PERMISSIONS) as PermissionKey[],
-  [SYSTEM_ROLE_KEYS.ASSOCIATION_ADMIN]: Object.values(PERMISSIONS).filter(
-    (p) => p !== PERMISSIONS.PLATFORM_MANAGE_ASSOCIATIONS
-  ) as PermissionKey[],
-  [SYSTEM_ROLE_KEYS.CHAIRMAN]: [
-    PERMISSIONS.MEMBERS_VIEW,
-    PERMISSIONS.APPLICATIONS_REVIEW,
-    PERMISSIONS.EXECUTIVES_MANAGE,
-    PERMISSIONS.BRANCHES_MANAGE,
-    PERMISSIONS.MEETINGS_MANAGE,
-    PERMISSIONS.FINANCE_VIEW,
-    PERMISSIONS.EVENTS_MANAGE,
-    PERMISSIONS.ANNOUNCEMENTS_MANAGE,
-    PERMISSIONS.DOCUMENTS_VIEW,
-    PERMISSIONS.REPORTS_VIEW,
-    PERMISSIONS.ASSOCIATION_SETTINGS_MANAGE,
-    PERMISSIONS.AUDIT_LOG_VIEW,
-  ],
-  [SYSTEM_ROLE_KEYS.VICE_CHAIRMAN]: [
-    PERMISSIONS.MEMBERS_VIEW,
-    PERMISSIONS.MEETINGS_MANAGE,
-    PERMISSIONS.FINANCE_VIEW,
-    PERMISSIONS.EVENTS_MANAGE,
-    PERMISSIONS.ANNOUNCEMENTS_MANAGE,
-    PERMISSIONS.DOCUMENTS_VIEW,
-    PERMISSIONS.REPORTS_VIEW,
-  ],
-  [SYSTEM_ROLE_KEYS.SECRETARY]: [
-    PERMISSIONS.MEMBERS_VIEW,
-    PERMISSIONS.MEMBERS_MANAGE,
-    PERMISSIONS.APPLICATIONS_REVIEW,
-    PERMISSIONS.MEETINGS_MANAGE,
-    PERMISSIONS.ATTENDANCE_RECORD,
-    PERMISSIONS.ANNOUNCEMENTS_MANAGE,
-    PERMISSIONS.DOCUMENTS_MANAGE,
-    PERMISSIONS.REPORTS_VIEW,
-  ],
-  [SYSTEM_ROLE_KEYS.ASSISTANT_SECRETARY]: [
-    PERMISSIONS.MEMBERS_VIEW,
-    PERMISSIONS.MEETINGS_MANAGE,
-    PERMISSIONS.ATTENDANCE_RECORD,
-    PERMISSIONS.DOCUMENTS_VIEW,
-  ],
-  [SYSTEM_ROLE_KEYS.TREASURER]: [
-    PERMISSIONS.MEMBERS_VIEW,
-    PERMISSIONS.FINANCE_VIEW,
-    PERMISSIONS.FINANCE_MANAGE,
-    PERMISSIONS.PAYMENTS_RECORD,
-    PERMISSIONS.FINES_MANAGE,
-    PERMISSIONS.REPORTS_VIEW,
-  ],
-  [SYSTEM_ROLE_KEYS.FINANCIAL_SECRETARY]: [
-    PERMISSIONS.MEMBERS_VIEW,
-    PERMISSIONS.FINANCE_VIEW,
-    PERMISSIONS.PAYMENTS_RECORD,
-    PERMISSIONS.FINES_MANAGE,
-    PERMISSIONS.REPORTS_VIEW,
-  ],
-  [SYSTEM_ROLE_KEYS.AUDITOR]: [
-    PERMISSIONS.MEMBERS_VIEW,
-    PERMISSIONS.FINANCE_VIEW,
-    PERMISSIONS.REPORTS_VIEW,
-    PERMISSIONS.AUDIT_LOG_VIEW,
-  ],
-  [SYSTEM_ROLE_KEYS.PRO]: [
-    PERMISSIONS.MEMBERS_VIEW,
-    PERMISSIONS.EVENTS_MANAGE,
-    PERMISSIONS.ANNOUNCEMENTS_MANAGE,
-    PERMISSIONS.DOCUMENTS_VIEW,
-  ],
-  [SYSTEM_ROLE_KEYS.MEMBER]: [
-    PERMISSIONS.DOCUMENTS_VIEW,
-    PERMISSIONS.REPORTS_VIEW,
-  ],
-};
-
 async function main() {
   console.log("Seeding permission catalog...");
   for (const permission of PERMISSION_CATALOG) {
@@ -135,13 +67,13 @@ async function main() {
   // distinct, so a compound-unique lookup on a null column isn't reliable).
   // Find-or-create explicitly instead.
   let superAdminRole = await prisma.role.findFirst({
-    where: { associationId: null, key: SYSTEM_ROLE_KEYS.SUPER_ADMIN },
+    where: { associationId: null, key: PERMISSION_TIER_KEYS.SUPER_ADMIN },
   });
   if (!superAdminRole) {
     superAdminRole = await prisma.role.create({
       data: {
         associationId: null,
-        key: SYSTEM_ROLE_KEYS.SUPER_ADMIN,
+        key: PERMISSION_TIER_KEYS.SUPER_ADMIN,
         name: "Super Admin",
         description: "Platform-wide administrator with access across all associations.",
         isSystem: true,
@@ -149,12 +81,14 @@ async function main() {
     });
   }
 
-  await grantPermissions(superAdminRole.id, DEFAULT_ROLE_PERMISSIONS[SYSTEM_ROLE_KEYS.SUPER_ADMIN]);
+  await grantPermissions(superAdminRole.id, DEFAULT_ROLE_PERMISSIONS[PERMISSION_TIER_KEYS.SUPER_ADMIN]);
 
   console.log(
-    "Done. Per-association roles (Association Admin, Chairman, Treasurer, etc.) " +
-      "are created when each association is provisioned, using DEFAULT_ROLE_PERMISSIONS " +
-      "from this file as the starting matrix."
+    "Done. Per-association permission-tier roles (Association Admin, Staff, " +
+      "Auditor, Member) and starter leadership positions (Chairman, Treasurer, " +
+      "etc. — see src/lib/constants/executive-positions.ts) are created when " +
+      "each association is provisioned, using DEFAULT_ROLE_PERMISSIONS from " +
+      "this file as the starting permission matrix for the tiers."
   );
 }
 
@@ -183,5 +117,3 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
-
-export { DEFAULT_ROLE_PERMISSIONS };

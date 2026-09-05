@@ -130,6 +130,7 @@ enum PaymentMethod {
 
 enum FineStatus {
   PENDING
+  PARTIALLY_PAID
   PAID
   WAIVED
   CANCELLED
@@ -145,6 +146,13 @@ enum EventStatus {
   PUBLISHED
   CANCELLED
   COMPLETED
+}
+
+enum EventRegistrationStatus {
+  REGISTERED
+  WAITLISTED
+  CANCELLED
+  ATTENDED
 }
 
 enum AnnouncementAudience {
@@ -243,12 +251,15 @@ model Association {
   roles                 Role[]
   branches              Branch[]
   executivePositions    ExecutivePosition[]
+  executiveAppointments ExecutiveAppointment[]
   meetings              Meeting[]
+  attendances           Attendance[]
   paymentCategories     PaymentCategory[]
   payments              Payment[]
   fines                 Fine[]
   financialTransactions FinancialTransaction[]
   events                Event[]
+  eventRegistrations    EventRegistration[]
   announcements         Announcement[]
   documents             Document[]
   auditLogs             AuditLog[]
@@ -314,10 +325,20 @@ model RolePermission {
 model Membership {
   id               String           @id @default(cuid())
   associationId    String
-  userId           String
+  userId           String? // optional: a membership can exist before/without a login account
   branchId         String?
   roleId           String
   membershipNumber String
+  // Person-identity fields live here (not only on User) so a Membership is a
+  // complete, self-sufficient record even when userId is null. When userId
+  // is set, the association-provisioning/member-service layer should default
+  // these from the linked User at creation time, but they remain
+  // independently editable afterwards (e.g. an association-specific contact
+  // email that differs from the person's login email). This mirrors the
+  // pattern MembershipApplication already uses for the same reason.
+  fullName         String
+  email            String?
+  phone            String?
   status           MembershipStatus @default(PENDING)
   joinedAt         DateTime         @default(now())
   leftAt           DateTime?
@@ -325,7 +346,7 @@ model Membership {
   updatedAt        DateTime         @updatedAt
 
   association Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
   branch      Branch?     @relation(fields: [branchId], references: [id], onDelete: SetNull)
   role        Role        @relation(fields: [roleId], references: [id], onDelete: Restrict)
 
@@ -333,13 +354,20 @@ model Membership {
   attendances           Attendance[]
   payments              Payment[]
   fines                 Fine[]
+  eventRegistrations    EventRegistration[]
   resultingApplication  MembershipApplication?
 
+  // NOTE on nullable userId + this unique constraint: Postgres treats every
+  // NULL as distinct for uniqueness purposes, so multiple account-less
+  // memberships (userId = null) are correctly allowed within one
+  // association, while a real user (userId set) is still limited to exactly
+  // one membership per association. This is the desired behavior, not a gap.
   @@unique([associationId, userId])
   @@unique([associationId, membershipNumber])
   @@index([associationId])
   @@index([branchId])
   @@index([roleId])
+  @@index([email])
 }
 
 model MembershipApplication {
@@ -420,6 +448,7 @@ model ExecutivePosition {
 
 model ExecutiveAppointment {
   id                  String                     @id @default(cuid())
+  associationId       String // denormalized: see tenant.md for why every tenant-owned table carries this directly
   executivePositionId String
   membershipId        String
   startDate           DateTime                   @default(now())
@@ -429,10 +458,12 @@ model ExecutiveAppointment {
   createdAt           DateTime                   @default(now())
   updatedAt           DateTime                   @updatedAt
 
+  association       Association       @relation(fields: [associationId], references: [id], onDelete: Cascade)
   executivePosition ExecutivePosition @relation(fields: [executivePositionId], references: [id], onDelete: Cascade)
   membership        Membership        @relation(fields: [membershipId], references: [id], onDelete: Cascade)
   appointedBy        User?            @relation("ExecutiveAppointedBy", fields: [appointedById], references: [id], onDelete: SetNull)
 
+  @@index([associationId])
   @@index([executivePositionId])
   @@index([membershipId])
 }
@@ -468,19 +499,22 @@ model Meeting {
 }
 
 model Attendance {
-  id           String           @id @default(cuid())
-  meetingId    String
-  membershipId String
-  status       AttendanceStatus @default(ABSENT)
-  checkInAt    DateTime?
-  remarks      String?
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
+  id            String           @id @default(cuid())
+  associationId String // denormalized: see tenant.md for why every tenant-owned table carries this directly
+  meetingId     String
+  membershipId  String
+  status        AttendanceStatus @default(ABSENT)
+  checkInAt     DateTime?
+  remarks       String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
 
-  meeting    Meeting    @relation(fields: [meetingId], references: [id], onDelete: Cascade)
-  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  association Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  meeting     Meeting     @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  membership  Membership  @relation(fields: [membershipId], references: [id], onDelete: Cascade)
 
   @@unique([meetingId, membershipId])
+  @@index([associationId])
   @@index([membershipId])
 }
 
@@ -513,6 +547,16 @@ model Payment {
   associationId     String
   membershipId      String
   paymentCategoryId String
+  // Optional link to the specific Fine this payment is settling. Nullable
+  // and separate from paymentCategoryId: the category still records *what
+  // kind* of charge this is (a "Fines" PaymentCategory of type FINE would
+  // typically be used), while fineId records *which specific fine record*
+  // this particular installment applies to. A Fine can have zero, one, or
+  // many Payment rows (see Fine model) so partial/installment fine payments
+  // are supported without a parallel "FinePayment" table — Payment already
+  // generalizes "a member handed over money for something," which is the
+  // same shape a fine payment needs.
+  fineId            String?
   amount            Decimal       @db.Decimal(14, 2)
   currency          String        @default("NGN")
   status            PaymentStatus @default(PENDING)
@@ -530,13 +574,14 @@ model Payment {
   association         Association          @relation(fields: [associationId], references: [id], onDelete: Cascade)
   membership          Membership           @relation(fields: [membershipId], references: [id], onDelete: Cascade)
   paymentCategory     PaymentCategory      @relation(fields: [paymentCategoryId], references: [id], onDelete: Restrict)
+  fine                Fine?                @relation(fields: [fineId], references: [id], onDelete: SetNull)
   recordedBy          User?                @relation("PaymentRecordedBy", fields: [recordedById], references: [id], onDelete: SetNull)
-  fine                Fine?
   financialTransaction FinancialTransaction?
 
   @@index([associationId])
   @@index([membershipId])
   @@index([status])
+  @@index([fineId])
 }
 
 model Fine {
@@ -551,15 +596,18 @@ model Fine {
   dueDate       DateTime?
   waivedById    String?
   waivedReason  String?
-  relatedPaymentId String? @unique
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
-  association    Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
-  membership     Membership  @relation(fields: [membershipId], references: [id], onDelete: Cascade)
-  issuedBy       User?       @relation("FineIssuedBy", fields: [issuedById], references: [id], onDelete: SetNull)
-  waivedBy       User?       @relation("FineWaivedBy", fields: [waivedById], references: [id], onDelete: SetNull)
-  relatedPayment Payment?    @relation(fields: [relatedPaymentId], references: [id], onDelete: SetNull)
+  association Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  membership  Membership  @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  issuedBy    User?       @relation("FineIssuedBy", fields: [issuedById], references: [id], onDelete: SetNull)
+  waivedBy    User?       @relation("FineWaivedBy", fields: [waivedById], references: [id], onDelete: SetNull)
+  // One fine can now have zero, one, or many payments (installments/partial
+  // payments). Outstanding balance = amount - SUM(payments where
+  // status = COMPLETED) — derived on read, not stored (see tenant.md /
+  // Phase 2 Section 9 reasoning: don't cache what's cheap to compute).
+  payments    Payment[]
 
   @@index([associationId])
   @@index([membershipId])
@@ -615,13 +663,38 @@ model Event {
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
 
-  association     Association      @relation(fields: [associationId], references: [id], onDelete: Cascade)
-  branch          Branch?          @relation(fields: [branchId], references: [id], onDelete: SetNull)
-  paymentCategory PaymentCategory? @relation(fields: [paymentCategoryId], references: [id], onDelete: SetNull)
-  createdBy       User?            @relation("EventCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  association     Association          @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  branch          Branch?              @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  paymentCategory PaymentCategory?     @relation(fields: [paymentCategoryId], references: [id], onDelete: SetNull)
+  createdBy       User?                @relation("EventCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  registrations   EventRegistration[]
 
   @@index([associationId])
   @@index([startAt])
+}
+
+// Deliberately minimal for MVP: just "who registered, with what status."
+// associationId, a nullable link point for a future Payment (not added yet —
+// per Phase 2.1 scope, gateway/ticket/QR features are not built now, but a
+// nullable FK is a trivial additive migration later), and the fields needed
+// to prevent duplicate registration are all this needs today.
+model EventRegistration {
+  id            String                  @id @default(cuid())
+  associationId String
+  eventId       String
+  membershipId  String
+  status        EventRegistrationStatus @default(REGISTERED)
+  registeredAt  DateTime                @default(now())
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  association Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  event       Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  membership  Membership  @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, membershipId])
+  @@index([associationId])
+  @@index([membershipId])
 }
 
 model Announcement {
