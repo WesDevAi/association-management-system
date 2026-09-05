@@ -52,7 +52,7 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: "Membership",
     items: [
-      { label: "Members", href: "/members", icon: Users, requiredPermission: PERMISSIONS.MEMBERS_VIEW, implemented: false },
+       { label: "Members", href: "/members", icon: Users, requiredPermission: PERMISSIONS.MEMBERS_VIEW, implemented: true },
     ],
   },
   {

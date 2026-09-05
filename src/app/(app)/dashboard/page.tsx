@@ -1,4 +1,5 @@
 import { Users, Wallet, CreditCard, CalendarDays, ClipboardCheck, Gavel } from "lucide-react";
+import Link from "next/link";
 import { requireAssociationContext } from "@/server/db/tenant";
 import { prisma } from "@/lib/prisma";
 import { StatCard } from "@/components/app-shell/stat-card";
@@ -8,11 +9,6 @@ export default async function DashboardPage() {
   const context = await requireAssociationContext();
   const associationId = context.membership.associationId;
 
-  // Every number below is a genuine query result, scoped to the current
-  // association — Phase 3.20 explicitly forbids fake statistics. Counts
-  // are naturally zero/near-zero this early since Members/Meetings/
-  // Payments/Fines modules haven't been built yet (later phases); that's
-  // shown as a real empty state, not simulated.
   const [memberCount, upcomingMeetingCount] = await Promise.all([
     prisma.membership.count({ where: { associationId, status: "ACTIVE" } }),
     prisma.meeting.count({ where: { associationId, scheduledAt: { gte: new Date() } } }),
@@ -64,7 +60,9 @@ export default async function DashboardPage() {
             <CardTitle className="text-base">Quick actions</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            Member management, meetings, and finance tools will appear here as those modules are built.
+            <Link href="/members" className="text-primary underline-offset-4 hover:underline">Manage Members</Link>
+            {` · `}
+            Meetings and finance tools will appear here as those modules are built.
           </CardContent>
         </Card>
 
@@ -73,7 +71,9 @@ export default async function DashboardPage() {
             <CardTitle className="text-base">Recent activity</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            Nothing to show yet. Activity will appear here once members, meetings, and payments start being recorded.
+            {memberCount > 0
+              ? `${memberCount} member(s) onboarded. Activity will appear here as meetings, payments, and other events are recorded.`
+              : "Nothing to show yet. Activity will appear here once members, meetings, and payments start being recorded."}
           </CardContent>
         </Card>
 
