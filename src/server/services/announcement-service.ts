@@ -335,3 +335,20 @@ export async function toggleAnnouncementPin(
 
   return true;
 }
+
+export async function deleteAnnouncement(
+  associationId: string,
+  announcementId: string
+): Promise<boolean> {
+  const announcement = await prisma.announcement.findFirst({
+    where: { id: announcementId, associationId },
+  });
+
+  if (!announcement) return false;
+
+  await prisma.announcement.delete({
+    where: { id: announcementId },
+  });
+
+  return true;
+}

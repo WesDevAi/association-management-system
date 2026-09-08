@@ -6,7 +6,7 @@ import { getEvent } from "@/server/services/event-service";
 import { getMembers } from "@/server/services/member-service";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, MapPin, Clock, Users, Globe, CheckCircle, XCircle } from "lucide-react";
+import { ArrowLeft, MapPin, Clock, Users, Globe, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { EventDetailClient } from "./event-detail-client";
 
@@ -60,6 +60,12 @@ export default async function EventDetailPage({
             Event details and registration management.
           </p>
         </div>
+        <Link href={`/events/${event.id}/edit`}>
+          <Button variant="outline" size="sm">
+            <Pencil className="mr-1.5 size-4" />
+            Edit
+          </Button>
+        </Link>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -196,7 +202,6 @@ export default async function EventDetailPage({
                 members={members}
                 registered={registered}
                 waitlisted={waitlisted}
-                attended={attended}
               />
             </CardContent>
           </Card>

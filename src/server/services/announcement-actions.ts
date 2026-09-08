@@ -10,6 +10,7 @@ import {
   updateAnnouncement,
   updateAnnouncementStatus,
   toggleAnnouncementPin,
+  deleteAnnouncement,
 } from "@/server/services/announcement-service";
 import { requirePermission } from "@/server/permissions/guards";
 import { PERMISSIONS } from "@/lib/constants/permissions";
@@ -140,4 +141,19 @@ export async function toggleAnnouncementPinAction(
   if (!toggled) return { error: "Announcement not found." };
 
   return { success: "Pin status updated." };
+}
+
+export async function deleteAnnouncementAction(
+  formData: FormData
+): Promise<AnnouncementActionState> {
+  const context = await requirePermission(PERMISSIONS.ANNOUNCEMENTS_MANAGE);
+  const associationId = context.membership.associationId;
+
+  const announcementId = formData.get("announcementId") as string;
+  if (!announcementId) return { error: "Missing announcement ID." };
+
+  const deleted = await deleteAnnouncement(associationId, announcementId);
+  if (!deleted) return { error: "Announcement not found." };
+
+  return { success: "Announcement deleted." };
 }

@@ -100,7 +100,7 @@ export async function updateEventAction(
     location: parsed.data.location,
     isVirtual: parsed.data.isVirtual,
     virtualLink: parsed.data.virtualLink,
-    capacity: parsed.data.capacity,
+    capacity: typeof parsed.data.capacity === "number" ? parsed.data.capacity : null,
     branchId: parsed.data.branchId,
   });
 

@@ -18,7 +18,6 @@ interface EventDetailClientProps {
   members: MemberListItem[];
   registered: EventRegistrationListItem[];
   waitlisted: EventRegistrationListItem[];
-  attended: EventRegistrationListItem[];
 }
 
 export function EventDetailClient({
@@ -26,7 +25,6 @@ export function EventDetailClient({
   members,
   registered,
   waitlisted,
-  attended,
 }: EventDetailClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();

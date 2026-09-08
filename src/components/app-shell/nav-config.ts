@@ -20,6 +20,7 @@ import {
   TrendingDown,
   Calendar,
   PieChart,
+  FileText,
 } from "lucide-react";
 import { PERMISSIONS, type PermissionKey } from "@/lib/constants/permissions";
 
@@ -94,8 +95,14 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: "Engagement",
     items: [
-      { label: "Events", href: "/events", icon: PartyPopper, requiredPermission: PERMISSIONS.EVENTS_MANAGE, implemented: false },
-      { label: "Announcements", href: "/announcements", icon: Megaphone, requiredPermission: PERMISSIONS.ANNOUNCEMENTS_MANAGE, implemented: false },
+      { label: "Events", href: "/events", icon: PartyPopper, requiredPermission: PERMISSIONS.EVENTS_MANAGE, implemented: true },
+      { label: "Announcements", href: "/announcements", icon: Megaphone, requiredPermission: PERMISSIONS.ANNOUNCEMENTS_MANAGE, implemented: true },
+    ],
+  },
+  {
+    label: "Documents",
+    items: [
+      { label: "Documents", href: "/documents", icon: FileText, requiredPermission: PERMISSIONS.DOCUMENTS_VIEW, implemented: true },
     ],
   },
   {
