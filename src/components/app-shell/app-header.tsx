@@ -1,5 +1,6 @@
 import { MobileNav } from "./mobile-nav";
 import { UserMenu } from "./user-menu";
+import { NotificationBell } from "./notification-bell";
 import { AssociationSwitcher, type AssociationOption } from "./association-switcher";
 import type { NavSection } from "./nav-config";
 
@@ -8,6 +9,7 @@ export function AppHeader({
   associationName,
   associations,
   activeAssociationId,
+  userId,
   userName,
   userEmail,
 }: {
@@ -15,6 +17,7 @@ export function AppHeader({
   associationName: string;
   associations: AssociationOption[];
   activeAssociationId: string;
+  userId: string;
   userName: string;
   userEmail: string;
 }) {
@@ -26,7 +29,10 @@ export function AppHeader({
           <AssociationSwitcher associations={associations} activeAssociationId={activeAssociationId} />
         </div>
       </div>
-      <UserMenu name={userName} email={userEmail} />
+      <div className="flex items-center gap-2">
+        <NotificationBell userId={userId} associationId={activeAssociationId} />
+        <UserMenu name={userName} email={userEmail} />
+      </div>
     </header>
   );
 }

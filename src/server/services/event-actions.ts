@@ -18,6 +18,8 @@ import {
 } from "@/server/services/event-service";
 import { requirePermission } from "@/server/permissions/guards";
 import { PERMISSIONS } from "@/lib/constants/permissions";
+import { notifyAssociationMembers, notifyMember } from "@/server/services/notification-service";
+import { prisma } from "@/lib/prisma";
 
 export type EventActionState = { error: string } | { success: string } | null;
 
@@ -134,6 +136,23 @@ export async function updateEventStatusAction(
   const updated = await updateEventStatus(associationId, parsed.data.eventId, parsed.data.status);
   if (!updated) return { error: "Event not found." };
 
+  if (parsed.data.status === "PUBLISHED") {
+    const event = await prisma.event.findUnique({
+      where: { id: parsed.data.eventId },
+      select: { title: true, branchId: true },
+    });
+    if (event) {
+      await notifyAssociationMembers({
+        associationId,
+        branchId: event.branchId,
+        title: "New Event Published",
+        body: `A new event "${event.title}" has been published.`,
+        type: "MEETING",
+        link: `/events/${parsed.data.eventId}`,
+      });
+    }
+  }
+
   return { success: `Event ${parsed.data.status.toLowerCase()}.` };
 }
 
@@ -167,6 +186,15 @@ export async function registerForEventAction(
     return { error: result.error };
   }
 
+  await notifyMember({
+    membershipId,
+    associationId,
+    title: "Event Registration Confirmed",
+    body: `Your registration for the event has been confirmed.`,
+    type: "MEETING",
+    link: `/events/${parsed.data.eventId}`,
+  });
+
   return { success: "Registration successful." };
 }
 
@@ -195,6 +223,21 @@ export async function cancelRegistrationAction(
     return { error: result.error };
   }
 
+  const registration = await prisma.eventRegistration.findUnique({
+    where: { id: parsed.data.registrationId },
+    select: { membershipId: true, eventId: true },
+  });
+  if (registration) {
+    await notifyMember({
+      membershipId: registration.membershipId,
+      associationId,
+      title: "Event Registration Cancelled",
+      body: `Your event registration has been cancelled.`,
+      type: "MEETING",
+      link: `/events/${registration.eventId}`,
+    });
+  }
+
   return { success: "Registration cancelled." };
 }
 
@@ -221,6 +264,21 @@ export async function checkInAttendeeAction(
 
   if (typeof result === "object" && "error" in result) {
     return { error: result.error };
+  }
+
+  const reg = await prisma.eventRegistration.findUnique({
+    where: { id: parsed.data.registrationId },
+    select: { membershipId: true, eventId: true },
+  });
+  if (reg) {
+    await notifyMember({
+      membershipId: reg.membershipId,
+      associationId,
+      title: "Checked In to Event",
+      body: `You have been checked in to the event.`,
+      type: "MEETING",
+      link: `/events/${reg.eventId}`,
+    });
   }
 
   return { success: "Attendee checked in." };

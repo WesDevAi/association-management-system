@@ -20,6 +20,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       associationName={context.membership.association.name}
       associations={associations}
       activeAssociationId={context.membership.associationId}
+      userId={context.user.id}
       userName={context.user.name ?? "Member"}
       userEmail={context.user.email ?? ""}
     >

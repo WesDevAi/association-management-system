@@ -8,6 +8,7 @@ export function AppShell({
   associationName,
   associations,
   activeAssociationId,
+  userId,
   userName,
   userEmail,
   children,
@@ -16,6 +17,7 @@ export function AppShell({
   associationName: string;
   associations: AssociationOption[];
   activeAssociationId: string;
+  userId: string;
   userName: string;
   userEmail: string;
   children: React.ReactNode;
@@ -29,6 +31,7 @@ export function AppShell({
           associationName={associationName}
           associations={associations}
           activeAssociationId={activeAssociationId}
+          userId={userId}
           userName={userName}
           userEmail={userEmail}
         />

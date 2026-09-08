@@ -20,6 +20,8 @@ import {
 } from "@/server/services/finance-service";
 import { requirePermission } from "@/server/permissions/guards";
 import { PERMISSIONS } from "@/lib/constants/permissions";
+import { notifyMember } from "@/server/services/notification-service";
+import { prisma } from "@/lib/prisma";
 
 export type FinanceActionState = { error: string } | { success: string } | null;
 
@@ -189,6 +191,19 @@ export async function recordPaymentAction(
     return { error: result.error };
   }
 
+  const category = await prisma.paymentCategory.findUnique({
+    where: { id: parsed.data.paymentCategoryId },
+    select: { name: true },
+  });
+  await notifyMember({
+    membershipId: parsed.data.membershipId,
+    associationId,
+    title: "Payment Recorded",
+    body: `A payment of ${parsed.data.amount} for "${category?.name ?? "Unknown"}" has been recorded.`,
+    type: "PAYMENT",
+    link: "/finance/payments",
+  });
+
   return { success: "Payment recorded successfully." };
 }
 
@@ -226,6 +241,15 @@ export async function issueFineAction(
     return { error: result.error };
   }
 
+  await notifyMember({
+    membershipId: parsed.data.membershipId,
+    associationId,
+    title: "Fine Issued",
+    body: `A fine of ${parsed.data.amount} has been issued: ${parsed.data.reason}`,
+    type: "FINE",
+    link: "/finance/fines",
+  });
+
   return { success: "Fine issued successfully." };
 }
 
@@ -254,6 +278,21 @@ export async function waiveFineAction(
 
   if (!waived) {
     return { error: "Fine not found or already settled." };
+  }
+
+  const fine = await prisma.fine.findUnique({
+    where: { id: parsed.data.fineId },
+    select: { membershipId: true, reason: true },
+  });
+  if (fine) {
+    await notifyMember({
+      membershipId: fine.membershipId,
+      associationId,
+      title: "Fine Waived",
+      body: `Your fine "${fine.reason}" has been waived.`,
+      type: "FINE",
+      link: "/finance/fines",
+    });
   }
 
   return { success: "Fine waived." };

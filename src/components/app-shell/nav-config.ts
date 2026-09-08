@@ -21,6 +21,7 @@ import {
   Calendar,
   PieChart,
   FileText,
+  Bell,
 } from "lucide-react";
 import { PERMISSIONS, type PermissionKey } from "@/lib/constants/permissions";
 
@@ -111,6 +112,12 @@ export const NAV_SECTIONS: NavSection[] = [
       { label: "Users", href: "/users", icon: UserCog, requiredPermission: PERMISSIONS.MEMBERS_MANAGE, implemented: true },
       { label: "Roles & Permissions", href: "/roles-permissions", icon: ShieldCheck, requiredPermission: PERMISSIONS.ROLES_MANAGE, implemented: true },
       { label: "Settings", href: "/settings", icon: Settings, requiredPermission: PERMISSIONS.ASSOCIATION_SETTINGS_MANAGE, implemented: true },
+    ],
+  },
+  {
+    label: "Notifications",
+    items: [
+      { label: "Notifications", href: "/notifications", icon: Bell, implemented: true },
     ],
   },
   {

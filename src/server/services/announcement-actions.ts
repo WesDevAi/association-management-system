@@ -14,6 +14,8 @@ import {
 } from "@/server/services/announcement-service";
 import { requirePermission } from "@/server/permissions/guards";
 import { PERMISSIONS } from "@/lib/constants/permissions";
+import { notifyAssociationMembers } from "@/server/services/notification-service";
+import { prisma } from "@/lib/prisma";
 
 export type AnnouncementActionState = { error: string } | { success: string } | null;
 
@@ -124,6 +126,23 @@ export async function updateAnnouncementStatusAction(
   );
 
   if (!updated) return { error: "Announcement not found." };
+
+  if (parsed.data.status === "PUBLISHED") {
+    const announcement = await prisma.announcement.findUnique({
+      where: { id: parsed.data.announcementId },
+      select: { title: true, audience: true, branchId: true },
+    });
+    if (announcement) {
+      await notifyAssociationMembers({
+        associationId,
+        branchId: announcement.audience === "BRANCH_ONLY" ? announcement.branchId : null,
+        title: "New Announcement",
+        body: `Announcement "${announcement.title}" has been published.`,
+        type: "ANNOUNCEMENT",
+        link: `/announcements/${parsed.data.announcementId}`,
+      });
+    }
+  }
 
   return { success: `Announcement ${parsed.data.status.toLowerCase()}.` };
 }
