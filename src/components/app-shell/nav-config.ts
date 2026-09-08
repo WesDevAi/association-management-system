@@ -110,7 +110,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Users", href: "/users", icon: UserCog, requiredPermission: PERMISSIONS.MEMBERS_MANAGE, implemented: true },
       { label: "Roles & Permissions", href: "/roles-permissions", icon: ShieldCheck, requiredPermission: PERMISSIONS.ROLES_MANAGE, implemented: true },
-      { label: "Settings", href: "/settings", icon: Settings, requiredPermission: PERMISSIONS.ASSOCIATION_SETTINGS_MANAGE, implemented: false },
+      { label: "Settings", href: "/settings", icon: Settings, requiredPermission: PERMISSIONS.ASSOCIATION_SETTINGS_MANAGE, implemented: true },
     ],
   },
   {
