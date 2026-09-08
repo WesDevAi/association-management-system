@@ -30,6 +30,9 @@ export const PERMISSIONS = {
   FINANCE_MANAGE: "finance.manage",
   PAYMENTS_RECORD: "payments.record",
   FINES_MANAGE: "fines.manage",
+  EXPENSES_VIEW: "expenses.view",
+  EXPENSES_MANAGE: "expenses.manage",
+  FINANCE_REPORTS_VIEW: "finance_reports.view",
 
   // Events & announcements
   EVENTS_MANAGE: "events.manage",

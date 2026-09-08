@@ -72,6 +72,15 @@ enum ExecutiveAppointmentStatus {
   ACTIVE
   COMPLETED
   REMOVED
+  RESIGNED
+  SUSPENDED
+}
+
+enum ExecutiveAppointmentType {
+  ELECTED
+  APPOINTED
+  ACTING
+  INTERIM
 }
 
 enum MeetingType {
@@ -215,6 +224,7 @@ model User {
   issuedFines        Fine[]                   @relation("FineIssuedBy")
   waivedFines        Fine[]                   @relation("FineWaivedBy")
   recordedTransactions FinancialTransaction[]  @relation("TransactionRecordedBy")
+  recordedExpenses     Expense[]              @relation("ExpenseRecordedBy")
   createdEvents      Event[]                  @relation("EventCreatedBy")
   authoredAnnouncements Announcement[]         @relation("AnnouncementAuthor")
   uploadedDocuments  Document[]               @relation("DocumentUploadedBy")
@@ -258,6 +268,8 @@ model Association {
   payments              Payment[]
   fines                 Fine[]
   financialTransactions FinancialTransaction[]
+  expenseCategories     ExpenseCategory[]
+  expenses              Expense[]
   events                Event[]
   eventRegistrations    EventRegistration[]
   announcements         Announcement[]
@@ -432,7 +444,10 @@ model ExecutivePosition {
   branchId        String? // null = association-level office
   roleId          String? // role granted to whoever holds this position
   title           String
+  description     String?
   order           Int      @default(0)
+  isActive        Boolean  @default(true)
+  maxOccupants    Int      @default(1) // 1 = single-occupant, >1 = committee roles
   termLengthMonths Int?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -451,9 +466,11 @@ model ExecutiveAppointment {
   associationId       String // denormalized: see tenant.md for why every tenant-owned table carries this directly
   executivePositionId String
   membershipId        String
+  appointmentType     ExecutiveAppointmentType   @default(APPOINTED)
   startDate           DateTime                   @default(now())
   endDate             DateTime?
   status              ExecutiveAppointmentStatus @default(ACTIVE)
+  notes               String?
   appointedById       String?
   createdAt           DateTime                   @default(now())
   updatedAt           DateTime                   @updatedAt
@@ -466,6 +483,7 @@ model ExecutiveAppointment {
   @@index([associationId])
   @@index([executivePositionId])
   @@index([membershipId])
+  @@index([status])
 }
 
 // ============================================================================
@@ -478,6 +496,9 @@ model Meeting {
   branchId      String?
   title         String
   description   String?
+  meetingNumber String?       // optional reference number e.g. "MTG-2026-001"
+  agenda        String?       // optional meeting agenda
+  notes         String?       // optional meeting notes / minutes
   type          MeetingType   @default(GENERAL)
   scheduledAt   DateTime
   endedAt       DateTime?
@@ -494,6 +515,7 @@ model Meeting {
   createdBy   User?        @relation("MeetingCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   attendances Attendance[]
 
+  @@unique([associationId, meetingNumber], name: "Meeting_associationId_meetingNumber_key")
   @@index([associationId])
   @@index([scheduledAt])
 }
@@ -527,10 +549,12 @@ model PaymentCategory {
   id             String              @id @default(cuid())
   associationId  String
   name           String
+  description    String?
   type           PaymentCategoryType @default(OTHER)
   defaultAmount  Decimal?            @db.Decimal(14, 2)
   isRecurring    Boolean             @default(false)
   frequency      PaymentFrequency?
+  isActive       Boolean             @default(true)
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
 
@@ -632,11 +656,63 @@ model FinancialTransaction {
   association     Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
   recordedBy      User?       @relation("TransactionRecordedBy", fields: [recordedById], references: [id], onDelete: SetNull)
   sourcePayment   Payment?    @relation(fields: [sourcePaymentId], references: [id], onDelete: SetNull)
-  receiptDocument Document?   @relation(fields: [receiptDocumentId], references: [id], onDelete: SetNull)
+  receiptDocument Document?   @relation("FinancialTransactionReceipt", fields: [receiptDocumentId], references: [id], onDelete: SetNull)
+  expense         Expense?
 
   @@index([associationId])
   @@index([type])
   @@index([transactionDate])
+}
+
+// ============================================================================
+// EXPENSES
+// ============================================================================
+
+model ExpenseCategory {
+  id            String   @id @default(cuid())
+  associationId String
+  name          String
+  description   String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  association Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  expenses    Expense[]
+
+  @@unique([associationId, name])
+  @@index([associationId])
+}
+
+model Expense {
+  id                 String        @id @default(cuid())
+  associationId      String
+  reference          String        @unique // Server-generated: EXP-YYYY-######
+  expenseCategoryId  String
+  amount             Decimal       @db.Decimal(14, 2)
+  currency           String        @default("NGN")
+  date               DateTime      @default(now())
+  description        String
+  paymentMethod      PaymentMethod @default(CASH)
+  payeeVendor        String
+  referenceNumber    String?       // External reference (invoice #, receipt #)
+  notes              String?
+  receiptDocumentId  String?       @unique
+  recordedById       String?
+  financialTransactionId String?   @unique
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  association         Association        @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  expenseCategory     ExpenseCategory    @relation(fields: [expenseCategoryId], references: [id], onDelete: Restrict)
+  receiptDocument     Document?          @relation("ExpenseReceiptDocument", fields: [receiptDocumentId], references: [id], onDelete: SetNull)
+  recordedBy          User?              @relation("ExpenseRecordedBy", fields: [recordedById], references: [id], onDelete: SetNull)
+  financialTransaction FinancialTransaction? @relation(fields: [financialTransactionId], references: [id], onDelete: SetNull)
+
+  @@index([associationId])
+  @@index([expenseCategoryId])
+  @@index([date])
+  @@index([reference])
 }
 
 // ============================================================================
@@ -742,7 +818,8 @@ model Document {
   association          Association            @relation(fields: [associationId], references: [id], onDelete: Cascade)
   branch               Branch?                @relation(fields: [branchId], references: [id], onDelete: SetNull)
   uploadedBy           User?                  @relation("DocumentUploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
-  financialTransaction FinancialTransaction?
+  financialTransaction FinancialTransaction?  @relation("FinancialTransactionReceipt")
+  expenseReceipt       Expense?               @relation("ExpenseReceiptDocument")
 
   @@index([associationId])
   @@index([category])

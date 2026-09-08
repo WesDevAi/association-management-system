@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import { UserX, UserCheck } from "lucide-react";
+import { UserX, UserCheck, ClipboardCheck, Briefcase, CreditCard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { updateMemberRoleAction, deactivateMemberAction, reactivateMemberAction } from "@/server/services/member-actions";
 import { Button } from "@/components/ui/button";
@@ -98,6 +98,27 @@ export function MembersTable({ members, associationId }: MembersTableProps) {
               <td className="px-4 py-3 text-muted-foreground">{member.membershipNumber}</td>
               <td className="px-4 py-3 text-right">
                 <div className="flex items-center justify-end gap-1">
+                  <a
+                    href={`/members/${member.id}/attendance`}
+                    className="inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                    title="View attendance"
+                  >
+                    <ClipboardCheck className="size-4" />
+                  </a>
+                  <a
+                    href={`/members/${member.id}/executive-history`}
+                    className="inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                    title="View executive history"
+                  >
+                    <Briefcase className="size-4" />
+                  </a>
+                  <a
+                    href={`/finance/payments?member=${member.id}`}
+                    className="inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                    title="View payment history"
+                  >
+                    <CreditCard className="size-4" />
+                  </a>
                   {member.status === "ACTIVE" ? (
                     <Button
                       variant="ghost"

@@ -1,7 +1,10 @@
-import { Users, Wallet, CreditCard, CalendarDays, ClipboardCheck, Gavel } from "lucide-react";
+import { Users, CalendarDays, Crown, Landmark } from "lucide-react";
 import Link from "next/link";
 import { requireAssociationContext } from "@/server/db/tenant";
 import { prisma } from "@/lib/prisma";
+import { getUpcomingMeetings } from "@/server/services/meeting-service";
+import { getExecutiveStats } from "@/server/services/executive-service";
+import { getFinanceStats } from "@/server/services/finance-service";
 import { StatCard } from "@/components/app-shell/stat-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -9,10 +12,14 @@ export default async function DashboardPage() {
   const context = await requireAssociationContext();
   const associationId = context.membership.associationId;
 
-  const [memberCount, upcomingMeetingCount] = await Promise.all([
-    prisma.membership.count({ where: { associationId, status: "ACTIVE" } }),
-    prisma.meeting.count({ where: { associationId, scheduledAt: { gte: new Date() } } }),
-  ]);
+  const [memberCount, upcomingMeetingCount, upcomingMeetings, execStats, financeStats] =
+    await Promise.all([
+      prisma.membership.count({ where: { associationId, status: "ACTIVE" } }),
+      prisma.meeting.count({ where: { associationId, scheduledAt: { gte: new Date() } } }),
+      getUpcomingMeetings(associationId),
+      getExecutiveStats(associationId),
+      getFinanceStats(associationId),
+    ]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -25,32 +32,25 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Total Members" value={memberCount} icon={Users} />
         <StatCard
-          label="Outstanding Dues"
-          value="—"
-          icon={Wallet}
-          emptyHint="Dues tracking hasn't been set up yet"
+          label="Active Executives"
+          value={execStats.activeExecutives}
+          icon={Crown}
+          emptyHint={execStats.activeExecutives === 0 ? "No executives yet" : undefined}
         />
         <StatCard
-          label="Payments This Month"
-          value="—"
-          icon={CreditCard}
-          emptyHint="No payment module yet"
-        />
-        <StatCard label="Upcoming Meetings" value={upcomingMeetingCount} icon={CalendarDays} emptyHint={upcomingMeetingCount === 0 ? "Nothing scheduled" : undefined} />
-        <StatCard
-          label="Attendance Rate"
-          value="—"
-          icon={ClipboardCheck}
-          emptyHint="No meetings recorded yet"
+          label="Upcoming Meetings"
+          value={upcomingMeetingCount}
+          icon={CalendarDays}
+          emptyHint={upcomingMeetingCount === 0 ? "Nothing scheduled" : undefined}
         />
         <StatCard
-          label="Outstanding Fines"
-          value="—"
-          icon={Gavel}
-          emptyHint="No fines module yet"
+          label="Total Collected"
+          value={`₦${Number(financeStats.totalCollected).toLocaleString()}`}
+          icon={Landmark}
+          emptyHint={financeStats.totalCollected === "0.00" ? "No collections yet" : undefined}
         />
       </div>
 
@@ -62,7 +62,13 @@ export default async function DashboardPage() {
           <CardContent className="text-sm text-muted-foreground">
             <Link href="/members" className="text-primary underline-offset-4 hover:underline">Manage Members</Link>
             {` · `}
-            Meetings and finance tools will appear here as those modules are built.
+            <Link href="/executives" className="text-primary underline-offset-4 hover:underline">View Executive</Link>
+            {` · `}
+            <Link href="/meetings" className="text-primary underline-offset-4 hover:underline">Schedule Meeting</Link>
+            {` · `}
+            <Link href="/attendance" className="text-primary underline-offset-4 hover:underline">Record Attendance</Link>
+            {` · `}
+            <Link href="/finance" className="text-primary underline-offset-4 hover:underline">View Finance</Link>
           </CardContent>
         </Card>
 
@@ -82,9 +88,19 @@ export default async function DashboardPage() {
             <CardTitle className="text-base">Upcoming meetings</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            {upcomingMeetingCount === 0
+            {upcomingMeetings.length === 0
               ? "No meetings scheduled yet."
-              : `${upcomingMeetingCount} meeting(s) scheduled.`}
+              : upcomingMeetings.map((m) => (
+                  <p key={m.id}>
+                    {m.title}
+                    {m.meetingNumber ? ` (${m.meetingNumber})` : ""} —{" "}
+                    {new Date(m.scheduledAt).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </p>
+                ))}
           </CardContent>
         </Card>
 

@@ -14,6 +14,12 @@ import {
   ShieldCheck,
   Settings,
   BarChart3,
+  Crown,
+  Receipt,
+  FolderOpen,
+  TrendingDown,
+  Calendar,
+  PieChart,
 } from "lucide-react";
 import { PERMISSIONS, type PermissionKey } from "@/lib/constants/permissions";
 
@@ -58,17 +64,31 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: "Operations",
     items: [
-      { label: "Meetings", href: "/meetings", icon: CalendarDays, requiredPermission: PERMISSIONS.MEETINGS_MANAGE, implemented: false },
-      { label: "Attendance", href: "/attendance", icon: ClipboardCheck, requiredPermission: PERMISSIONS.ATTENDANCE_RECORD, implemented: false },
+       { label: "Meetings", href: "/meetings", icon: CalendarDays, requiredPermission: PERMISSIONS.MEETINGS_MANAGE, implemented: true },
+       { label: "Attendance", href: "/attendance", icon: ClipboardCheck, requiredPermission: PERMISSIONS.ATTENDANCE_RECORD, implemented: true },
+    ],
+  },
+  {
+    label: "Leadership",
+    items: [
+      { label: "Current Executive", href: "/executives", icon: Crown, requiredPermission: PERMISSIONS.EXECUTIVES_MANAGE, implemented: true },
+      { label: "Positions", href: "/executives/positions", icon: UserCog, requiredPermission: PERMISSIONS.EXECUTIVES_MANAGE, implemented: true },
+      { label: "History", href: "/executives/history", icon: BarChart3, requiredPermission: PERMISSIONS.EXECUTIVES_MANAGE, implemented: true },
     ],
   },
   {
     label: "Finance",
     items: [
-      { label: "Dues", href: "/dues", icon: Wallet, requiredPermission: PERMISSIONS.FINANCE_VIEW, implemented: false },
-      { label: "Payments", href: "/payments", icon: CreditCard, requiredPermission: PERMISSIONS.PAYMENTS_RECORD, implemented: false },
-      { label: "Fines", href: "/fines", icon: Gavel, requiredPermission: PERMISSIONS.FINES_MANAGE, implemented: false },
-      { label: "Finance", href: "/finance", icon: Landmark, requiredPermission: PERMISSIONS.FINANCE_VIEW, implemented: false },
+      { label: "Overview", href: "/finance", icon: Landmark, requiredPermission: PERMISSIONS.FINANCE_VIEW, implemented: true },
+      { label: "Payments", href: "/finance/payments", icon: CreditCard, requiredPermission: PERMISSIONS.PAYMENTS_RECORD, implemented: true },
+      { label: "Expenses", href: "/finance/expenses", icon: Receipt, requiredPermission: PERMISSIONS.EXPENSES_VIEW, implemented: true },
+      { label: "Expense Categories", href: "/finance/expense-categories", icon: FolderOpen, requiredPermission: PERMISSIONS.EXPENSES_VIEW, implemented: true },
+      { label: "Balances", href: "/finance/balances", icon: Wallet, requiredPermission: PERMISSIONS.FINANCE_VIEW, implemented: true },
+      { label: "Fines", href: "/finance/fines", icon: Gavel, requiredPermission: PERMISSIONS.FINES_MANAGE, implemented: true },
+      { label: "Reports", href: "/finance/reports", icon: BarChart3, requiredPermission: PERMISSIONS.FINANCE_REPORTS_VIEW, implemented: true },
+      { label: "Monthly Report", href: "/finance/reports/monthly", icon: Calendar, requiredPermission: PERMISSIONS.FINANCE_REPORTS_VIEW, implemented: true },
+      { label: "Quarterly Report", href: "/finance/reports/quarterly", icon: PieChart, requiredPermission: PERMISSIONS.FINANCE_REPORTS_VIEW, implemented: true },
+      { label: "Annual Report", href: "/finance/reports/annual", icon: TrendingDown, requiredPermission: PERMISSIONS.FINANCE_REPORTS_VIEW, implemented: true },
     ],
   },
   {
@@ -89,7 +109,7 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: "Reports",
     items: [
-      { label: "Reports", href: "/reports", icon: BarChart3, requiredPermission: PERMISSIONS.REPORTS_VIEW, implemented: false },
+      { label: "Reports", href: "/finance/reports", icon: BarChart3, requiredPermission: PERMISSIONS.FINANCE_REPORTS_VIEW, implemented: true },
     ],
   },
 ];
