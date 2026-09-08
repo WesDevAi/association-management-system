@@ -4,6 +4,7 @@ import { getAnnualTotals } from "@/server/services/finance-report-service";
 import { StatCard } from "@/components/app-shell/stat-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, Wallet } from "lucide-react";
+import { FinanceReportExport } from "../finance-report-export";
 
 export default async function AnnualReportPage() {
   const context = await requirePermission(PERMISSIONS.FINANCE_REPORTS_VIEW);
@@ -16,11 +17,23 @@ export default async function AnnualReportPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Annual Report</h1>
-        <p className="text-sm text-muted-foreground">
-          Year-over-year financial summary.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Annual Report</h1>
+          <p className="text-sm text-muted-foreground">
+            Year-over-year financial summary.
+          </p>
+        </div>
+        <FinanceReportExport
+          title="Year"
+          filename="annual-report"
+          rows={years.map((y) => ({
+            label: String(y.year),
+            income: y.income,
+            expenses: y.expenses,
+            net: y.net,
+          }))}
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

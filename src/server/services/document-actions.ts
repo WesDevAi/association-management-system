@@ -12,6 +12,7 @@ import {
 } from "@/server/services/document-service";
 import { requirePermission } from "@/server/permissions/guards";
 import { PERMISSIONS } from "@/lib/constants/permissions";
+import { logAudit } from "@/server/services/audit-service";
 
 export type DocumentActionState = { error: string } | { success: string } | null;
 
@@ -56,6 +57,15 @@ export async function createDocumentAction(
   if (typeof result === "object" && "error" in result) {
     return { error: result.error };
   }
+
+  await logAudit({
+    associationId,
+    userId: context.user.id,
+    action: "document.created",
+    entityType: "document",
+    entityId: result as string,
+    metadata: { entityName: parsed.data.title },
+  });
 
   return { success: "Document uploaded successfully." };
 }
@@ -102,6 +112,15 @@ export async function updateDocumentAction(
     return { error: result.error };
   }
 
+  await logAudit({
+    associationId,
+    userId: context.user.id,
+    action: "document.updated",
+    entityType: "document",
+    entityId: parsed.data.documentId,
+    metadata: { entityName: parsed.data.title },
+  });
+
   return { success: "Document updated." };
 }
 
@@ -128,6 +147,14 @@ export async function deleteDocumentAction(
   if (typeof result === "object" && "error" in result) {
     return { error: result.error };
   }
+
+  await logAudit({
+    associationId,
+    userId: context.user.id,
+    action: "document.deleted",
+    entityType: "document",
+    entityId: parsed.data.documentId,
+  });
 
   return { success: "Document deleted." };
 }

@@ -20,6 +20,7 @@ import { requirePermission } from "@/server/permissions/guards";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import { notifyAssociationMembers, notifyMember } from "@/server/services/notification-service";
 import { prisma } from "@/lib/prisma";
+import { logAudit } from "@/server/services/audit-service";
 
 export type EventActionState = { error: string } | { success: string } | null;
 
@@ -66,6 +67,14 @@ export async function createEventAction(
   if (typeof result === "object" && "error" in result) {
     return { error: result.error };
   }
+
+  await logAudit({
+    associationId,
+    action: "event.created",
+    entityType: "event",
+    entityId: result as string,
+    metadata: { entityName: parsed.data.title },
+  });
 
   return { success: "Event created successfully." };
 }
@@ -114,6 +123,14 @@ export async function updateEventAction(
     return { error: result.error };
   }
 
+  await logAudit({
+    associationId,
+    action: "event.updated",
+    entityType: "event",
+    entityId: parsed.data.eventId,
+    metadata: { entityName: parsed.data.title },
+  });
+
   return { success: "Event updated." };
 }
 
@@ -152,6 +169,14 @@ export async function updateEventStatusAction(
       });
     }
   }
+
+  const statusAction = parsed.data.status === "PUBLISHED" ? "event.published" : parsed.data.status === "CANCELLED" ? "event.cancelled" : parsed.data.status === "COMPLETED" ? "event.completed" : "event.updated";
+  await logAudit({
+    associationId,
+    action: statusAction as "event.published" | "event.cancelled" | "event.completed" | "event.updated",
+    entityType: "event",
+    entityId: parsed.data.eventId,
+  });
 
   return { success: `Event ${parsed.data.status.toLowerCase()}.` };
 }
@@ -193,6 +218,13 @@ export async function registerForEventAction(
     body: `Your registration for the event has been confirmed.`,
     type: "MEETING",
     link: `/events/${parsed.data.eventId}`,
+  });
+
+  await logAudit({
+    associationId,
+    action: "event.registered",
+    entityType: "eventRegistration",
+    metadata: { eventId: parsed.data.eventId, membershipId },
   });
 
   return { success: "Registration successful." };
@@ -238,6 +270,13 @@ export async function cancelRegistrationAction(
     });
   }
 
+  await logAudit({
+    associationId,
+    action: "event.registration_cancelled",
+    entityType: "eventRegistration",
+    entityId: parsed.data.registrationId,
+  });
+
   return { success: "Registration cancelled." };
 }
 
@@ -280,6 +319,13 @@ export async function checkInAttendeeAction(
       link: `/events/${reg.eventId}`,
     });
   }
+
+  await logAudit({
+    associationId,
+    action: "event.checked_in",
+    entityType: "eventRegistration",
+    entityId: parsed.data.registrationId,
+  });
 
   return { success: "Attendee checked in." };
 }

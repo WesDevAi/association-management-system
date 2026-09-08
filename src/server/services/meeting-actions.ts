@@ -9,6 +9,7 @@ import {
   recordAttendance,
   recordBulkAttendance,
 } from "@/server/services/meeting-service";
+import { logAudit } from "@/server/services/audit-service";
 
 export type MeetingActionState = { error: string } | { success: string } | null;
 
@@ -63,6 +64,14 @@ export async function createMeetingAction(
 
   try {
     await createMeeting(associationId, data);
+
+    await logAudit({
+      associationId,
+      action: "meeting.created",
+      entityType: "meeting",
+      metadata: { entityName: parsed.data.title },
+    });
+
     return { success: "Meeting scheduled successfully." };
   } catch (error) {
     if (
@@ -108,6 +117,13 @@ export async function updateMeetingAction(
     return { error: "Meeting not found." };
   }
 
+  await logAudit({
+    associationId,
+    action: "meeting.updated",
+    entityType: "meeting",
+    entityId: meetingId,
+  });
+
   return { success: "Meeting updated successfully." };
 }
 
@@ -125,6 +141,13 @@ export async function cancelMeetingAction(
   if (!cancelled) {
     return { error: "Meeting not found." };
   }
+
+  await logAudit({
+    associationId,
+    action: "meeting.cancelled",
+    entityType: "meeting",
+    entityId: meetingId,
+  });
 
   return { success: "Meeting cancelled." };
 }
@@ -150,6 +173,14 @@ export async function updateMeetingStatusAction(
   if (!result) {
     return { error: "Meeting not found." };
   }
+
+  await logAudit({
+    associationId,
+    action: "meeting.status_changed",
+    entityType: "meeting",
+    entityId: meetingId,
+    metadata: { status },
+  });
 
   return { success: "Meeting status updated." };
 }
@@ -177,6 +208,13 @@ export async function recordAttendanceAction(
   if (!result) {
     return { error: "Meeting not found. Attendance could not be recorded." };
   }
+
+  await logAudit({
+    associationId,
+    action: "attendance.recorded",
+    entityType: "attendance",
+    metadata: { meetingId, membershipId, status },
+  });
 
   return { success: "Attendance recorded." };
 }
@@ -207,6 +245,13 @@ export async function recordBulkAttendanceAction(
   if (!result) {
     return { error: "Meeting not found. Attendance could not be recorded." };
   }
+
+  await logAudit({
+    associationId,
+    action: "attendance.recorded",
+    entityType: "attendance",
+    metadata: { meetingId, count: entries.length },
+  });
 
   return { success: "Attendance saved successfully." };
 }

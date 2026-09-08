@@ -39,33 +39,72 @@ export type MemberStats = {
 
 export async function getMembers(
   associationId: string,
-  statusFilter?: string
-): Promise<MemberListItem[]> {
+  opts?: {
+    status?: string;
+    search?: string;
+    branchId?: string;
+    roleId?: string;
+    page?: number;
+    limit?: number;
+  }
+): Promise<{ members: MemberListItem[]; total: number; page: number; pageSize: number; totalPages: number }> {
   const where: Record<string, unknown> = { associationId };
-  if (statusFilter) {
-    where.status = statusFilter;
+
+  if (opts?.status && opts.status !== "ALL") {
+    where.status = opts.status;
   }
 
-  const members = await prisma.membership.findMany({
-    where,
-    orderBy: { joinedAt: "desc" },
-    include: {
-      role: { select: { name: true, key: true } },
-      branch: { select: { name: true } },
-    },
-  });
+  if (opts?.search) {
+    where.OR = [
+      { fullName: { contains: opts.search, mode: "insensitive" } },
+      { email: { contains: opts.search, mode: "insensitive" } },
+      { membershipNumber: { contains: opts.search, mode: "insensitive" } },
+    ];
+  }
 
-  return members.map((m) => ({
-    id: m.id,
-    membershipNumber: m.membershipNumber,
-    fullName: m.fullName,
-    email: m.email ?? "",
-    phone: m.phone,
-    status: m.status,
-    roleName: m.role.name,
-    roleKey: m.role.key,
-    joinedAt: m.joinedAt,
-  }));
+  if (opts?.branchId && opts.branchId !== "ALL") {
+    where.branchId = opts.branchId;
+  }
+
+  if (opts?.roleId && opts.roleId !== "ALL") {
+    where.roleId = opts.roleId;
+  }
+
+  const page = opts?.page ?? 1;
+  const pageSize = opts?.limit ?? 50;
+  const skip = (page - 1) * pageSize;
+
+  const [members, total] = await Promise.all([
+    prisma.membership.findMany({
+      where,
+      orderBy: { joinedAt: "desc" },
+      skip,
+      take: pageSize,
+      include: {
+        role: { select: { name: true, key: true } },
+        branch: { select: { name: true } },
+      },
+    }),
+    prisma.membership.count({ where }),
+  ]);
+
+  return {
+    members: members.map((m) => ({
+      id: m.id,
+      membershipNumber: m.membershipNumber,
+      fullName: m.fullName,
+      email: m.email ?? "",
+      phone: m.phone,
+      status: m.status,
+      roleName: m.role.name,
+      roleKey: m.role.key,
+      joinedAt: m.joinedAt,
+    })),
+    total,
+    page,
+    pageSize,
+    totalPages: Math.ceil(total / pageSize),
+  };
 }
 
 export async function getMemberDetail(

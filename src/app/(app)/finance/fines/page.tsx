@@ -13,7 +13,7 @@ export default async function FinesPage({
   const context = await requirePermission(PERMISSIONS.FINANCE_VIEW);
   const associationId = context.membership.associationId;
 
-  const [fines, members] = await Promise.all([
+  const [fines, { members }] = await Promise.all([
     getFines(associationId, {
       status: searchParams?.status,
     }),

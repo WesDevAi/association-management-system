@@ -22,6 +22,7 @@ import { requirePermission } from "@/server/permissions/guards";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import { notifyMember } from "@/server/services/notification-service";
 import { prisma } from "@/lib/prisma";
+import { logAudit } from "@/server/services/audit-service";
 
 export type FinanceActionState = { error: string } | { success: string } | null;
 
@@ -62,6 +63,14 @@ export async function createPaymentCategoryAction(
       isRecurring: parsed.data.isRecurring,
       frequency: parsed.data.frequency || null,
     });
+
+    await logAudit({
+      associationId,
+      action: "payment_category.created",
+      entityType: "paymentCategory",
+      metadata: { entityName: parsed.data.name },
+    });
+
     return { success: `Category "${parsed.data.name}" created.` };
   } catch {
     return { error: "Failed to create payment category." };
@@ -110,6 +119,14 @@ export async function updatePaymentCategoryAction(
     return { error: "Category not found." };
   }
 
+  await logAudit({
+    associationId,
+    action: "payment_category.updated",
+    entityType: "paymentCategory",
+    entityId: parsed.data.categoryId,
+    metadata: { entityName: parsed.data.name },
+  });
+
   return { success: "Category updated." };
 }
 
@@ -125,6 +142,13 @@ export async function deactivatePaymentCategoryAction(
   const deactivated = await deactivatePaymentCategory(associationId, categoryId);
   if (!deactivated) return { error: "Category not found." };
 
+  await logAudit({
+    associationId,
+    action: "payment_category.deactivated",
+    entityType: "paymentCategory",
+    entityId: categoryId,
+  });
+
   return { success: "Category deactivated." };
 }
 
@@ -139,6 +163,13 @@ export async function activatePaymentCategoryAction(
 
   const activated = await activatePaymentCategory(associationId, categoryId);
   if (!activated) return { error: "Category not found." };
+
+  await logAudit({
+    associationId,
+    action: "payment_category.activated",
+    entityType: "paymentCategory",
+    entityId: categoryId,
+  });
 
   return { success: "Category activated." };
 }
@@ -204,6 +235,14 @@ export async function recordPaymentAction(
     link: "/finance/payments",
   });
 
+  await logAudit({
+    associationId,
+    action: "payment.recorded",
+    entityType: "payment",
+    entityId: result as string,
+    metadata: { amount: parsed.data.amount, category: category?.name },
+  });
+
   return { success: "Payment recorded successfully." };
 }
 
@@ -248,6 +287,14 @@ export async function issueFineAction(
     body: `A fine of ${parsed.data.amount} has been issued: ${parsed.data.reason}`,
     type: "FINE",
     link: "/finance/fines",
+  });
+
+  await logAudit({
+    associationId,
+    action: "fine.issued",
+    entityType: "fine",
+    entityId: result as string,
+    metadata: { amount: parsed.data.amount, reason: parsed.data.reason },
   });
 
   return { success: "Fine issued successfully." };
@@ -295,6 +342,14 @@ export async function waiveFineAction(
     });
   }
 
+  await logAudit({
+    associationId,
+    action: "fine.waived",
+    entityType: "fine",
+    entityId: parsed.data.fineId,
+    metadata: { reason: parsed.data.waivedReason },
+  });
+
   return { success: "Fine waived." };
 }
 
@@ -317,6 +372,13 @@ export async function cancelFineAction(
   if (!cancelled) {
     return { error: "Fine not found or already settled." };
   }
+
+  await logAudit({
+    associationId,
+    action: "fine.cancelled",
+    entityType: "fine",
+    entityId: parsed.data.fineId,
+  });
 
   return { success: "Fine cancelled." };
 }

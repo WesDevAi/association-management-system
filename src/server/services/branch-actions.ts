@@ -12,6 +12,7 @@ import {
 } from "@/server/services/branch-service";
 import { requirePermission } from "@/server/permissions/guards";
 import { PERMISSIONS } from "@/lib/constants/permissions";
+import { logAudit } from "@/server/services/audit-service";
 
 export type BranchActionState = { error: string } | { success: string } | null;
 
@@ -47,6 +48,15 @@ export async function createBranchAction(
   if (typeof result === "object" && "error" in result) {
     return { error: result.error };
   }
+
+  await logAudit({
+    associationId,
+    userId: context.user.id,
+    action: "branch.created",
+    entityType: "branch",
+    entityId: result as string,
+    metadata: { entityName: parsed.data.name },
+  });
 
   return { success: "Branch created." };
 }
@@ -89,6 +99,15 @@ export async function updateBranchAction(
     return { error: result.error };
   }
 
+  await logAudit({
+    associationId,
+    userId: context.user.id,
+    action: "branch.updated",
+    entityType: "branch",
+    entityId: parsed.data.branchId,
+    metadata: { entityName: parsed.data.name },
+  });
+
   return { success: "Branch updated." };
 }
 
@@ -112,6 +131,14 @@ export async function deactivateBranchAction(
     return { error: result.error };
   }
 
+  await logAudit({
+    associationId,
+    userId: context.user.id,
+    action: "branch.deactivated",
+    entityType: "branch",
+    entityId: branchId,
+  });
+
   return { success: "Branch deactivated." };
 }
 
@@ -134,6 +161,14 @@ export async function activateBranchAction(
   if (typeof result === "object" && "error" in result) {
     return { error: result.error };
   }
+
+  await logAudit({
+    associationId,
+    userId: context.user.id,
+    action: "branch.activated",
+    entityType: "branch",
+    entityId: branchId,
+  });
 
   return { success: "Branch activated." };
 }

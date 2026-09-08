@@ -16,6 +16,7 @@ import {
 } from "@/server/services/expense-service";
 import { requirePermission } from "@/server/permissions/guards";
 import { PERMISSIONS } from "@/lib/constants/permissions";
+import { logAudit } from "@/server/services/audit-service";
 
 export type ExpenseActionState = { error: string } | { success: string } | null;
 
@@ -47,6 +48,14 @@ export async function createExpenseCategoryAction(
   if (typeof result === "object" && "error" in result) {
     return { error: result.error };
   }
+
+  await logAudit({
+    associationId,
+    userId: context.user.id,
+    action: "expense_category.created",
+    entityType: "expenseCategory",
+    metadata: { entityName: parsed.data.name },
+  });
 
   return { success: `Category "${parsed.data.name}" created.` };
 }
@@ -84,6 +93,15 @@ export async function updateExpenseCategoryAction(
   if (typeof result === "object" && "error" in result) {
     return { error: result.error };
   }
+
+  await logAudit({
+    associationId,
+    userId: context.user.id,
+    action: "expense_category.updated",
+    entityType: "expenseCategory",
+    entityId: parsed.data.categoryId,
+    metadata: { entityName: parsed.data.name },
+  });
 
   return { success: "Category updated." };
 }
@@ -162,6 +180,15 @@ export async function createExpenseAction(
     return { error: result.error };
   }
 
+  await logAudit({
+    associationId,
+    userId: context.user.id,
+    action: "expense.recorded",
+    entityType: "expense",
+    entityId: result as string,
+    metadata: { amount: parsed.data.amount },
+  });
+
   return { success: "Expense recorded successfully." };
 }
 
@@ -208,6 +235,14 @@ export async function updateExpenseAction(
   if (typeof result === "object" && "error" in result) {
     return { error: result.error };
   }
+
+  await logAudit({
+    associationId,
+    userId: context.user.id,
+    action: "expense.updated",
+    entityType: "expense",
+    entityId: parsed.data.expenseId,
+  });
 
   return { success: "Expense updated." };
 }

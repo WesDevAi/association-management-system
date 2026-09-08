@@ -12,6 +12,7 @@ import {
 } from "@/server/services/role-service";
 import { requirePermission } from "@/server/permissions/guards";
 import { PERMISSIONS } from "@/lib/constants/permissions";
+import { logAudit } from "@/server/services/audit-service";
 
 export type RoleActionState = { error: string } | { success: string } | null;
 
@@ -50,6 +51,15 @@ export async function createRoleAction(
   if (typeof result === "object" && "error" in result) {
     return { error: result.error };
   }
+
+  await logAudit({
+    associationId,
+    userId: context.user.id,
+    action: "role.created",
+    entityType: "role",
+    entityId: result as string,
+    metadata: { entityName: parsed.data.name },
+  });
 
   return { success: "Role created." };
 }
@@ -91,6 +101,15 @@ export async function updateRoleAction(
     return { error: result.error };
   }
 
+  await logAudit({
+    associationId,
+    userId: context.user.id,
+    action: "role.updated",
+    entityType: "role",
+    entityId: parsed.data.roleId,
+    metadata: { entityName: parsed.data.name },
+  });
+
   return { success: "Role updated." };
 }
 
@@ -118,6 +137,14 @@ export async function deleteRoleAction(
   if (typeof result === "object" && "error" in result) {
     return { error: result.error };
   }
+
+  await logAudit({
+    associationId,
+    userId: context.user.id,
+    action: "role.deleted",
+    entityType: "role",
+    entityId: parsed.data.roleId,
+  });
 
   return { success: "Role deleted." };
 }

@@ -4,6 +4,7 @@ import { getQuarterlyTotals } from "@/server/services/finance-report-service";
 import { StatCard } from "@/components/app-shell/stat-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, Wallet } from "lucide-react";
+import { FinanceReportExport } from "../finance-report-export";
 
 export default async function QuarterlyReportPage({
   searchParams,
@@ -21,11 +22,23 @@ export default async function QuarterlyReportPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Quarterly Report — {year}</h1>
-        <p className="text-sm text-muted-foreground">
-          Quarter-by-quarter breakdown of income and expenses.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Quarterly Report — {year}</h1>
+          <p className="text-sm text-muted-foreground">
+            Quarter-by-quarter breakdown of income and expenses.
+          </p>
+        </div>
+        <FinanceReportExport
+          title="Quarter"
+          filename={`quarterly-report-${year}`}
+          rows={quarters.map((q) => ({
+            label: q.quarterLabel,
+            income: q.income,
+            expenses: q.expenses,
+            net: q.net,
+          }))}
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

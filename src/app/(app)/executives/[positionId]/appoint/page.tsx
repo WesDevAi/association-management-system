@@ -15,7 +15,7 @@ export default async function AppointPage({
   const context = await requirePermission(PERMISSIONS.EXECUTIVES_MANAGE);
   const associationId = context.membership.associationId;
 
-  const [position, members] = await Promise.all([
+  const [position, { members }] = await Promise.all([
     getExecutivePosition(associationId, params.positionId),
     getMembers(associationId),
   ]);

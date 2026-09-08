@@ -2,6 +2,7 @@
 
 import { updateMemberRole } from "@/server/services/member-service";
 import { deactivateMember, reactivateMember, approveApplication, rejectApplication } from "@/server/services/member-service";
+import { logAudit } from "@/server/services/audit-service";
 
 export type MembersActionState = { error: string } | null;
 
@@ -21,6 +22,14 @@ export async function updateMemberRoleAction(
     return { error: "Member not found." };
   }
 
+  await logAudit({
+    associationId,
+    action: "member.role_changed",
+    entityType: "membership",
+    entityId: memberId,
+    metadata: { roleId },
+  });
+
   return null;
 }
 
@@ -38,6 +47,13 @@ export async function deactivateMemberAction(
   if (!deactivated) {
     return { error: "Member not found or already inactive." };
   }
+
+  await logAudit({
+    associationId,
+    action: "member.deactivated",
+    entityType: "membership",
+    entityId: memberId,
+  });
 
   return null;
 }
@@ -57,6 +73,13 @@ export async function reactivateMemberAction(
     return { error: "Member not found." };
   }
 
+  await logAudit({
+    associationId,
+    action: "member.reactivated",
+    entityType: "membership",
+    entityId: memberId,
+  });
+
   return null;
 }
 
@@ -75,6 +98,13 @@ export async function approveApplicationAction(
     return { error: "Could not approve application." };
   }
 
+  await logAudit({
+    associationId,
+    action: "application.approved",
+    entityType: "membershipApplication",
+    entityId: applicationId,
+  });
+
   return null;
 }
 
@@ -92,6 +122,13 @@ export async function rejectApplicationAction(
   if (!result) {
     return { error: "Could not reject application." };
   }
+
+  await logAudit({
+    associationId,
+    action: "application.rejected",
+    entityType: "membershipApplication",
+    entityId: applicationId,
+  });
 
   return null;
 }

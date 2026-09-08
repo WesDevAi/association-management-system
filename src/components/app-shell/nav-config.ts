@@ -22,6 +22,7 @@ import {
   PieChart,
   FileText,
   Bell,
+  ScrollText,
 } from "lucide-react";
 import { PERMISSIONS, type PermissionKey } from "@/lib/constants/permissions";
 
@@ -121,9 +122,11 @@ export const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
-    label: "Reports",
+    label: "Reports & Audit",
     items: [
-      { label: "Reports", href: "/finance/reports", icon: BarChart3, requiredPermission: PERMISSIONS.FINANCE_REPORTS_VIEW, implemented: true },
+      { label: "Audit Log", href: "/audit-log", icon: ScrollText, requiredPermission: PERMISSIONS.AUDIT_LOG_VIEW, implemented: true },
+      { label: "Membership Report", href: "/reports/membership", icon: Users, requiredPermission: PERMISSIONS.REPORTS_VIEW, implemented: true },
+      { label: "Finance Report", href: "/finance/reports", icon: BarChart3, requiredPermission: PERMISSIONS.FINANCE_REPORTS_VIEW, implemented: true },
     ],
   },
 ];

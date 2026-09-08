@@ -4,6 +4,7 @@ import { updateAssociationSchema } from "@/server/validation/association-setting
 import { updateAssociationSettings } from "@/server/services/association-settings-service";
 import { requirePermission } from "@/server/permissions/guards";
 import { PERMISSIONS } from "@/lib/constants/permissions";
+import { logAudit } from "@/server/services/audit-service";
 
 export type SettingsActionState = { error: string } | { success: string } | null;
 
@@ -36,6 +37,13 @@ export async function updateAssociationSettingsAction(
   if (typeof result === "object" && "error" in result) {
     return { error: result.error };
   }
+
+  await logAudit({
+    associationId,
+    userId: context.user.id,
+    action: "settings.updated",
+    entityType: "association",
+  });
 
   return { success: "Settings updated." };
 }

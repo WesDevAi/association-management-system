@@ -13,7 +13,7 @@ export default async function PaymentsPage({
   const context = await requirePermission(PERMISSIONS.FINANCE_VIEW);
   const associationId = context.membership.associationId;
 
-  const [payments, categories, members] = await Promise.all([
+  const [payments, categories, { members }] = await Promise.all([
     getPayments(associationId, {
       status: searchParams?.status,
       method: searchParams?.method,

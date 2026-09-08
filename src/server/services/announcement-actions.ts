@@ -16,6 +16,7 @@ import { requirePermission } from "@/server/permissions/guards";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import { notifyAssociationMembers } from "@/server/services/notification-service";
 import { prisma } from "@/lib/prisma";
+import { logAudit } from "@/server/services/audit-service";
 
 export type AnnouncementActionState = { error: string } | { success: string } | null;
 
@@ -56,6 +57,15 @@ export async function createAnnouncementAction(
   if (typeof result === "object" && "error" in result) {
     return { error: result.error };
   }
+
+  await logAudit({
+    associationId,
+    userId: context.user.id,
+    action: "announcement.created",
+    entityType: "announcement",
+    entityId: result as string,
+    metadata: { entityName: parsed.data.title },
+  });
 
   return { success: "Announcement created successfully." };
 }
@@ -99,6 +109,15 @@ export async function updateAnnouncementAction(
   if (typeof result === "object" && "error" in result) {
     return { error: result.error };
   }
+
+  await logAudit({
+    associationId,
+    userId: context.user.id,
+    action: "announcement.updated",
+    entityType: "announcement",
+    entityId: parsed.data.announcementId,
+    metadata: { entityName: parsed.data.title },
+  });
 
   return { success: "Announcement updated." };
 }
@@ -144,6 +163,14 @@ export async function updateAnnouncementStatusAction(
     }
   }
 
+  await logAudit({
+    associationId,
+    userId: context.user.id,
+    action: parsed.data.status === "PUBLISHED" ? "announcement.published" : "announcement.archived",
+    entityType: "announcement",
+    entityId: parsed.data.announcementId,
+  });
+
   return { success: `Announcement ${parsed.data.status.toLowerCase()}.` };
 }
 
@@ -159,6 +186,14 @@ export async function toggleAnnouncementPinAction(
   const toggled = await toggleAnnouncementPin(associationId, announcementId);
   if (!toggled) return { error: "Announcement not found." };
 
+  await logAudit({
+    associationId,
+    userId: context.user.id,
+    action: "announcement.pinned",
+    entityType: "announcement",
+    entityId: announcementId,
+  });
+
   return { success: "Pin status updated." };
 }
 
@@ -173,6 +208,14 @@ export async function deleteAnnouncementAction(
 
   const deleted = await deleteAnnouncement(associationId, announcementId);
   if (!deleted) return { error: "Announcement not found." };
+
+  await logAudit({
+    associationId,
+    userId: context.user.id,
+    action: "announcement.deleted",
+    entityType: "announcement",
+    entityId: announcementId,
+  });
 
   return { success: "Announcement deleted." };
 }

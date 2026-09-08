@@ -9,6 +9,7 @@ import {
 import { StatCard } from "@/components/app-shell/stat-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, Wallet, AlertTriangle } from "lucide-react";
+import { FinanceReportExport } from "./finance-report-export";
 
 export default async function ReportsPage({
   searchParams,
@@ -24,13 +25,35 @@ export default async function ReportsPage({
     getExpensesByCategory(associationId, searchParams?.dateFrom, searchParams?.dateTo),
   ]);
 
+  const categoryRows = [
+    ...incomeByCategory.map((c) => ({
+      label: `${c.category} (Income)`,
+      income: c.totalAmount,
+      expenses: "0.00",
+      net: c.totalAmount,
+    })),
+    ...expensesByCategory.map((c) => ({
+      label: `${c.category} (Expense)`,
+      income: "0.00",
+      expenses: c.totalAmount,
+      net: String(-Number(c.totalAmount)),
+    })),
+  ];
+
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Financial Reports</h1>
-        <p className="text-sm text-muted-foreground">
-          {report.period} — Overview of income, expenses, and financial health.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Financial Reports</h1>
+          <p className="text-sm text-muted-foreground">
+            {report.period} — Overview of income, expenses, and financial health.
+          </p>
+        </div>
+        <FinanceReportExport
+          title="Category"
+          filename="finance-overview"
+          rows={categoryRows}
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

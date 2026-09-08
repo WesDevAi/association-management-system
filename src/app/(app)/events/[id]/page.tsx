@@ -26,7 +26,7 @@ export default async function EventDetailPage({
   const context = await requirePermission(PERMISSIONS.EVENTS_MANAGE);
   const associationId = context.membership.associationId;
 
-  const [event, members] = await Promise.all([
+  const [event, { members }] = await Promise.all([
     getEvent(associationId, id),
     getMembers(associationId),
   ]);

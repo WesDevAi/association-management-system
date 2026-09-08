@@ -14,6 +14,7 @@ import {
 } from "@/server/services/user-service";
 import { requirePermission } from "@/server/permissions/guards";
 import { PERMISSIONS } from "@/lib/constants/permissions";
+import { logAudit } from "@/server/services/audit-service";
 
 export type UserActionState = { error: string } | { success: string } | null;
 
@@ -42,6 +43,15 @@ export async function updateMembershipRoleAction(
   if (typeof result === "object" && "error" in result) {
     return { error: result.error };
   }
+
+  await logAudit({
+    associationId,
+    userId: context.user.id,
+    action: "user.role_changed",
+    entityType: "membership",
+    entityId: parsed.data.membershipId,
+    metadata: { roleId: parsed.data.roleId },
+  });
 
   return { success: "Role updated." };
 }
@@ -72,6 +82,15 @@ export async function updateMembershipStatusAction(
     return { error: result.error };
   }
 
+  await logAudit({
+    associationId,
+    userId: context.user.id,
+    action: "user.status_changed",
+    entityType: "membership",
+    entityId: parsed.data.membershipId,
+    metadata: { status: parsed.data.status },
+  });
+
   return { success: "Status updated." };
 }
 
@@ -101,6 +120,14 @@ export async function linkUserAccountAction(
     return { error: result.error };
   }
 
+  await logAudit({
+    associationId,
+    userId: context.user.id,
+    action: "user.linked",
+    entityType: "membership",
+    entityId: parsed.data.membershipId,
+  });
+
   return { success: "Account linked." };
 }
 
@@ -124,6 +151,14 @@ export async function unlinkUserAccountAction(
   if (typeof result === "object" && "error" in result) {
     return { error: result.error };
   }
+
+  await logAudit({
+    associationId,
+    userId: context.user.id,
+    action: "user.unlinked",
+    entityType: "membership",
+    entityId: parsed.data.membershipId,
+  });
 
   return { success: "Account unlinked." };
 }
