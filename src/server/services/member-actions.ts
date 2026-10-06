@@ -3,17 +3,29 @@
 import { updateMemberRole } from "@/server/services/member-service";
 import { deactivateMember, reactivateMember, approveApplication, rejectApplication } from "@/server/services/member-service";
 import { logAudit } from "@/server/services/audit-service";
+import { requirePermission } from "@/server/permissions/guards";
+import { PERMISSIONS } from "@/lib/constants/permissions";
 
 export type MembersActionState = { error: string } | null;
+
+/**
+ * Phase 16 hardening: every action resolves its own authorization and takes
+ * `associationId` from the caller's session context — NEVER from the posted
+ * FormData. A Server Action is a publicly reachable endpoint, so a
+ * client-supplied `associationId` would let any signed-in user from
+ * Association A mutate Association B by posting B's id. The client still
+ * sends the field (it's harmless), the server just ignores it.
+ */
 
 export async function updateMemberRoleAction(
   formData: FormData
 ): Promise<MembersActionState> {
+  const context = await requirePermission(PERMISSIONS.MEMBERS_MANAGE);
+  const associationId = context.membership.associationId;
   const memberId = formData.get("memberId") as string;
-  const associationId = formData.get("associationId") as string;
   const roleId = formData.get("roleId") as string;
 
-  if (!memberId || !associationId || !roleId) {
+  if (!memberId || !roleId) {
     return { error: "Missing required fields." };
   }
 
@@ -36,10 +48,11 @@ export async function updateMemberRoleAction(
 export async function deactivateMemberAction(
   formData: FormData
 ): Promise<MembersActionState> {
+  const context = await requirePermission(PERMISSIONS.MEMBERS_MANAGE);
+  const associationId = context.membership.associationId;
   const memberId = formData.get("memberId") as string;
-  const associationId = formData.get("associationId") as string;
 
-  if (!memberId || !associationId) {
+  if (!memberId) {
     return { error: "Missing required fields." };
   }
 
@@ -61,10 +74,11 @@ export async function deactivateMemberAction(
 export async function reactivateMemberAction(
   formData: FormData
 ): Promise<MembersActionState> {
+  const context = await requirePermission(PERMISSIONS.MEMBERS_MANAGE);
+  const associationId = context.membership.associationId;
   const memberId = formData.get("memberId") as string;
-  const associationId = formData.get("associationId") as string;
 
-  if (!memberId || !associationId) {
+  if (!memberId) {
     return { error: "Missing required fields." };
   }
 
@@ -86,10 +100,11 @@ export async function reactivateMemberAction(
 export async function approveApplicationAction(
   formData: FormData
 ): Promise<MembersActionState> {
+  const context = await requirePermission(PERMISSIONS.APPLICATIONS_REVIEW);
+  const associationId = context.membership.associationId;
   const applicationId = formData.get("applicationId") as string;
-  const associationId = formData.get("associationId") as string;
 
-  if (!applicationId || !associationId) {
+  if (!applicationId) {
     return { error: "Missing required fields." };
   }
 
@@ -111,10 +126,11 @@ export async function approveApplicationAction(
 export async function rejectApplicationAction(
   formData: FormData
 ): Promise<MembersActionState> {
+  const context = await requirePermission(PERMISSIONS.APPLICATIONS_REVIEW);
+  const associationId = context.membership.associationId;
   const applicationId = formData.get("applicationId") as string;
-  const associationId = formData.get("associationId") as string;
 
-  if (!applicationId || !associationId) {
+  if (!applicationId) {
     return { error: "Missing required fields." };
   }
 

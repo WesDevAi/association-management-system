@@ -10,13 +10,24 @@ import {
   recordBulkAttendance,
 } from "@/server/services/meeting-service";
 import { logAudit } from "@/server/services/audit-service";
+import { requirePermission } from "@/server/permissions/guards";
+import { PERMISSIONS } from "@/lib/constants/permissions";
+
+/**
+ * Phase 16 hardening: authorization and tenant scoping are resolved from the
+ * caller's session on EVERY action. The posted `associationId` field is
+ * ignored — a Server Action is a publicly reachable endpoint, so trusting a
+ * client-supplied tenant id would let any signed-in user of one association
+ * write meetings/attendance into another.
+ */
 
 export type MeetingActionState = { error: string } | { success: string } | null;
 
 export async function createMeetingAction(
   formData: FormData
 ): Promise<MeetingActionState> {
-  const associationId = formData.get("associationId") as string;
+  const context = await requirePermission(PERMISSIONS.MEETINGS_MANAGE);
+  const associationId = context.membership.associationId;
   const title = formData.get("title") as string;
   const description = (formData.get("description") as string) || null;
   const meetingNumber = (formData.get("meetingNumber") as string) || null;
@@ -88,7 +99,8 @@ export async function updateMeetingAction(
   formData: FormData
 ): Promise<MeetingActionState> {
   const meetingId = formData.get("meetingId") as string;
-  const associationId = formData.get("associationId") as string;
+  const context = await requirePermission(PERMISSIONS.MEETINGS_MANAGE);
+  const associationId = context.membership.associationId;
   const title = (formData.get("title") as string) || undefined;
   const description = (formData.get("description") as string) || undefined;
   const meetingNumber = (formData.get("meetingNumber") as string) || undefined;
@@ -131,7 +143,8 @@ export async function cancelMeetingAction(
   formData: FormData
 ): Promise<MeetingActionState> {
   const meetingId = formData.get("meetingId") as string;
-  const associationId = formData.get("associationId") as string;
+  const context = await requirePermission(PERMISSIONS.MEETINGS_MANAGE);
+  const associationId = context.membership.associationId;
 
   if (!meetingId || !associationId) {
     return { error: "Missing required fields." };
@@ -156,7 +169,8 @@ export async function updateMeetingStatusAction(
   formData: FormData
 ): Promise<MeetingActionState> {
   const meetingId = formData.get("meetingId") as string;
-  const associationId = formData.get("associationId") as string;
+  const context = await requirePermission(PERMISSIONS.MEETINGS_MANAGE);
+  const associationId = context.membership.associationId;
   const status = formData.get("status") as string;
   const endedAt = formData.get("endedAt") as string | undefined;
 
@@ -189,7 +203,8 @@ export async function recordAttendanceAction(
   formData: FormData
 ): Promise<MeetingActionState> {
   const meetingId = formData.get("meetingId") as string;
-  const associationId = formData.get("associationId") as string;
+  const context = await requirePermission(PERMISSIONS.ATTENDANCE_RECORD);
+  const associationId = context.membership.associationId;
   const membershipId = formData.get("membershipId") as string;
   const status = formData.get("status") as string;
   const remarks = (formData.get("remarks") as string) || undefined;
@@ -223,7 +238,8 @@ export async function recordBulkAttendanceAction(
   formData: FormData
 ): Promise<MeetingActionState> {
   const meetingId = formData.get("meetingId") as string;
-  const associationId = formData.get("associationId") as string;
+  const context = await requirePermission(PERMISSIONS.ATTENDANCE_RECORD);
+  const associationId = context.membership.associationId;
   const attendanceJson = formData.get("attendance") as string;
 
   if (!meetingId || !associationId || !attendanceJson) {

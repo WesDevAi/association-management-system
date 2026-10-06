@@ -1,5 +1,26 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Production deployment (Phase 16)
+
+Read these before deploying — especially the migration baseline section:
+
+| Doc | Contents |
+|---|---|
+| [`docs/deployment-checklist.md`](docs/deployment-checklist.md) | Env setup → database prep → deploy → smoke tests → backups → rollback → post-deploy |
+| [`docs/database-operations.md`](docs/database-operations.md) | Migration baseline strategy, **safe** deploy sequence, backup/restore, pre-deploy DB checklist |
+| [`docs/runbook.md`](docs/runbook.md) | Database down, migration failure, bad env var, auth failure, restoring a backup |
+| [`docs/monitoring.md`](docs/monitoring.md) | Structured logs, health probe, error-tracking integration points |
+| [`docs/deploy-vercel.md`](docs/deploy-vercel.md) | Separately labelled Vercel + Neon / Supabase instructions |
+
+Quick gates: `npm run verify` (schema validation, typecheck, lint, tests,
+production build).
+
+Environment variables are documented in [`.env.example`](.env.example) and
+validated at server startup (`src/lib/env.ts`) — production refuses to boot
+without `AUTH_SECRET` and a valid `DATABASE_URL`.
+
+**Never run `prisma migrate reset` against a database with real data.**
+
 ## Getting Started
 
 First, run the development server:
