@@ -7,6 +7,7 @@ import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { NavSection } from "./nav-config";
 import { Button } from "@/components/ui/button";
+import { NavIcon } from "./nav-icon";
 
 export function MobileNav({ sections, associationName }: { sections: NavSection[]; associationName: string }) {
   const [open, setOpen] = useState(false);
@@ -36,13 +37,12 @@ export function MobileNav({ sections, associationName }: { sections: NavSection[
                   </p>
                   <ul className="flex flex-col gap-0.5">
                     {section.items.map((item) => {
-                      const Icon = item.icon;
                       const isActive = pathname === item.href;
                       if (!item.implemented) {
                         return (
                           <li key={item.href}>
                             <span className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground/50">
-                              <Icon className="size-4" />
+                              <NavIcon name={item.icon} className="size-4" />
                               {item.label}
                               <span className="ml-auto text-[10px] uppercase">Soon</span>
                             </span>
@@ -59,7 +59,7 @@ export function MobileNav({ sections, associationName }: { sections: NavSection[
                               isActive && "bg-accent font-medium"
                             )}
                           >
-                            <Icon className="size-4" />
+                            <NavIcon name={item.icon} className="size-4" />
                             {item.label}
                           </Link>
                         </li>

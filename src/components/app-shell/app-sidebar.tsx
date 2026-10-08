@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import type { NavSection } from "./nav-config";
+import { NavIcon } from "./nav-icon";
 
 export function AppSidebar({
   sections,
@@ -29,14 +30,13 @@ export function AppSidebar({
             </p>
             <ul className="flex flex-col gap-0.5">
               {section.items.map((item) => {
-                const Icon = item.icon;
                 const isActive = pathname === item.href;
 
                 if (!item.implemented) {
                   return (
                     <li key={item.href}>
                       <span className="flex cursor-not-allowed items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground/50">
-                        <Icon className="size-4" />
+                        <NavIcon name={item.icon} className="size-4" />
                         {item.label}
                         <span className="ml-auto text-[10px] uppercase tracking-wide">Soon</span>
                       </span>
@@ -53,7 +53,7 @@ export function AppSidebar({
                         isActive && "bg-accent text-accent-foreground font-medium"
                       )}
                     >
-                      <Icon className="size-4" />
+                      <NavIcon name={item.icon} className="size-4" />
                       {item.label}
                     </Link>
                   </li>
