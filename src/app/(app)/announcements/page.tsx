@@ -10,26 +10,27 @@ import { Button } from "@/components/ui/button";
 export default async function AnnouncementsPage({
   searchParams,
 }: {
-  searchParams?: {
+  searchParams?: Promise<{
     search?: string;
     status?: string;
     audience?: string;
     sort?: string;
     order?: string;
     page?: string;
-  };
+  }>;
 }) {
+  const resolvedSearchParams = await searchParams;
   const context = await requirePermission(PERMISSIONS.ANNOUNCEMENTS_MANAGE);
   const associationId = context.membership.associationId;
 
   const [result, stats] = await Promise.all([
     getAnnouncements(associationId, {
-      search: searchParams?.search,
-      status: searchParams?.status,
-      audience: searchParams?.audience,
-      sort: searchParams?.sort,
-      order: searchParams?.order,
-      page: searchParams?.page ? parseInt(searchParams.page) : 1,
+      search: resolvedSearchParams?.search,
+      status: resolvedSearchParams?.status,
+      audience: resolvedSearchParams?.audience,
+      sort: resolvedSearchParams?.sort,
+      order: resolvedSearchParams?.order,
+      page: resolvedSearchParams?.page ? parseInt(resolvedSearchParams.page) : 1,
     }),
     getAnnouncementStats(associationId),
   ]);

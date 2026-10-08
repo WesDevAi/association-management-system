@@ -12,16 +12,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 export default async function MemberAttendanceHistoryPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const resolvedParams = await params;
   const context = await requirePermission("members.view");
   const associationId = context.membership.associationId;
 
-  const member = await getMemberDetail(associationId, params.id);
+  const member = await getMemberDetail(associationId, resolvedParams.id);
   if (!member) notFound();
 
   const [history, allMeetings] = await Promise.all([
-    getMemberAttendanceHistory(associationId, params.id),
+    getMemberAttendanceHistory(associationId, resolvedParams.id),
     getMeetings(associationId),
   ]);
 

@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 export default async function DocumentsPage({
   searchParams,
 }: {
-  searchParams?: {
+  searchParams?: Promise<{
     search?: string;
     category?: string;
     visibility?: string;
@@ -20,22 +20,23 @@ export default async function DocumentsPage({
     sort?: string;
     order?: string;
     page?: string;
-  };
+  }>;
 }) {
+  const resolvedSearchParams = await searchParams;
   const context = await requirePermission(PERMISSIONS.DOCUMENTS_VIEW);
   const associationId = context.membership.associationId;
 
   const [result, stats] = await Promise.all([
     getDocuments(associationId, {
-      search: searchParams?.search,
-      category: searchParams?.category,
-      visibility: searchParams?.visibility,
-      branchId: searchParams?.branchId,
-      dateFrom: searchParams?.dateFrom,
-      dateTo: searchParams?.dateTo,
-      sort: searchParams?.sort,
-      order: searchParams?.order,
-      page: searchParams?.page ? parseInt(searchParams.page) : 1,
+      search: resolvedSearchParams?.search,
+      category: resolvedSearchParams?.category,
+      visibility: resolvedSearchParams?.visibility,
+      branchId: resolvedSearchParams?.branchId,
+      dateFrom: resolvedSearchParams?.dateFrom,
+      dateTo: resolvedSearchParams?.dateTo,
+      sort: resolvedSearchParams?.sort,
+      order: resolvedSearchParams?.order,
+      page: resolvedSearchParams?.page ? parseInt(resolvedSearchParams.page) : 1,
     }),
     getDocumentStats(associationId),
   ]);

@@ -14,7 +14,7 @@ Nothing here creates accounts, pushes secrets, or touches an external service.
 |---|---|---|
 | Hosting provider | Vercel / Railway / Render / Fly.io / VPS+Docker | App is a standard Next.js 16 server. |
 | Database provider | Neon / Supabase / RDS / self-hosted PostgreSQL | Must be PostgreSQL ≥ 14. |
-| Email provider | Resend / Postmark / SES / none | Not integrated yet — no email is sent by the app today. |
+| Email provider | Resend | Integrated for account recovery and member invitations. |
 | File storage | Local disk / S3 / Supabase Storage | Documents are stored per current schema; storage backend not yet pluggable. |
 | Domain | e.g. `ams.example.com` | Feeds `NEXT_PUBLIC_APP_URL`. |
 | Monitoring / error tracking | None → Vercel logs / Sentry / Datadog / Axiom | See [`docs/monitoring.md`](./monitoring.md). Nothing was added — needs your approval. |
@@ -30,6 +30,9 @@ Nothing here creates accounts, pushes secrets, or touches an external service.
       the correct project/host.
 - [ ] `NEXT_PUBLIC_APP_URL` = the final `https://` origin, no trailing slash.
 - [ ] `AUTH_URL` left unset unless the auth origin differs from the app URL.
+- [ ] `RESEND_API_KEY` and `EMAIL_FROM` set as server-only secrets/values after
+      verifying the sender domain in Resend. Required for password reset and
+      member invitation delivery.
 - [ ] Optional: `DEFAULT_CURRENCY`, `LOG_LEVEL`.
 - [ ] Confirm no secret is prefixed `NEXT_PUBLIC_` (only `NEXT_PUBLIC_APP_URL`
       is browser-visible).

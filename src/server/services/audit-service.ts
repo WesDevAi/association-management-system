@@ -83,6 +83,7 @@ export type AuditAction =
   | "user.status_changed"
   | "user.linked"
   | "user.unlinked"
+  | "user.invited"
   | "settings.updated";
 
 // ---------------------------------------------------------------------------
@@ -148,6 +149,7 @@ function describeAction(action: AuditAction, metadata?: Record<string, unknown>)
     "user.status_changed": `User status changed for${suffix}`,
     "user.linked": `User account linked to${suffix}`,
     "user.unlinked": `User account unlinked from${suffix}`,
+    "user.invited": `Account invitation sent for${suffix}`,
     "settings.updated": "Association settings updated",
   };
 

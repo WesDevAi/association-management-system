@@ -8,17 +8,18 @@ import { RecordPaymentForm } from "./record-payment-form";
 export default async function PaymentsPage({
   searchParams,
 }: {
-  searchParams?: { status?: string; method?: string; category?: string; search?: string };
+  searchParams?: Promise<{ status?: string; method?: string; category?: string; search?: string }>;
 }) {
+  const resolvedSearchParams = await searchParams;
   const context = await requirePermission(PERMISSIONS.FINANCE_VIEW);
   const associationId = context.membership.associationId;
 
   const [payments, categories, { members }] = await Promise.all([
     getPayments(associationId, {
-      status: searchParams?.status,
-      method: searchParams?.method,
-      categoryId: searchParams?.category,
-      search: searchParams?.search,
+      status: resolvedSearchParams?.status,
+      method: resolvedSearchParams?.method,
+      categoryId: resolvedSearchParams?.category,
+      search: resolvedSearchParams?.search,
     }),
     getPaymentCategories(associationId),
     getMembers(associationId),

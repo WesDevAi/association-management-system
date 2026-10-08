@@ -14,15 +14,16 @@ import { FinanceReportExport } from "./finance-report-export";
 export default async function ReportsPage({
   searchParams,
 }: {
-  searchParams?: { dateFrom?: string; dateTo?: string };
+  searchParams?: Promise<{ dateFrom?: string; dateTo?: string }>;
 }) {
+  const resolvedSearchParams = await searchParams;
   const context = await requirePermission(PERMISSIONS.FINANCE_REPORTS_VIEW);
   const associationId = context.membership.associationId;
 
   const [report, incomeByCategory, expensesByCategory] = await Promise.all([
-    getDateRangeReport(associationId, searchParams?.dateFrom, searchParams?.dateTo),
-    getIncomeByCategory(associationId, searchParams?.dateFrom, searchParams?.dateTo),
-    getExpensesByCategory(associationId, searchParams?.dateFrom, searchParams?.dateTo),
+    getDateRangeReport(associationId, resolvedSearchParams?.dateFrom, resolvedSearchParams?.dateTo),
+    getIncomeByCategory(associationId, resolvedSearchParams?.dateFrom, resolvedSearchParams?.dateTo),
+    getExpensesByCategory(associationId, resolvedSearchParams?.dateFrom, resolvedSearchParams?.dateTo),
   ]);
 
   const categoryRows = [

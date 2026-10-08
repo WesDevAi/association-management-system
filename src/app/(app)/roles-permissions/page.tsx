@@ -10,20 +10,21 @@ import { Button } from "@/components/ui/button";
 export default async function RolesPermissionsPage({
   searchParams,
 }: {
-  searchParams?: {
+  searchParams?: Promise<{
     search?: string;
     type?: string;
     page?: string;
-  };
+  }>;
 }) {
+  const resolvedSearchParams = await searchParams;
   const context = await requirePermission(PERMISSIONS.ROLES_MANAGE);
   const associationId = context.membership.associationId;
 
   const [result, stats] = await Promise.all([
     getAssociationRoles(associationId, {
-      search: searchParams?.search,
-      type: searchParams?.type,
-      page: searchParams?.page ? parseInt(searchParams.page) : 1,
+      search: resolvedSearchParams?.search,
+      type: resolvedSearchParams?.type,
+      page: resolvedSearchParams?.page ? parseInt(resolvedSearchParams.page) : 1,
     }),
     getRoleStats(associationId),
   ]);

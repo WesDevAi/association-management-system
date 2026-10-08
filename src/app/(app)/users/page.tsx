@@ -9,24 +9,25 @@ import { Users, UserCheck, Link2, Unlink } from "lucide-react";
 export default async function UsersPage({
   searchParams,
 }: {
-  searchParams?: {
+  searchParams?: Promise<{
     search?: string;
     status?: string;
     roleId?: string;
     linked?: string;
     page?: string;
-  };
+  }>;
 }) {
+  const resolvedSearchParams = await searchParams;
   const context = await requirePermission(PERMISSIONS.MEMBERS_MANAGE);
   const associationId = context.membership.associationId;
 
   const [result, stats, rolesResult] = await Promise.all([
     getAssociationUsers(associationId, {
-      search: searchParams?.search,
-      status: searchParams?.status,
-      roleId: searchParams?.roleId,
-      linked: searchParams?.linked,
-      page: searchParams?.page ? parseInt(searchParams.page) : 1,
+      search: resolvedSearchParams?.search,
+      status: resolvedSearchParams?.status,
+      roleId: resolvedSearchParams?.roleId,
+      linked: resolvedSearchParams?.linked,
+      page: resolvedSearchParams?.page ? parseInt(resolvedSearchParams.page) : 1,
     }),
     getUserStats(associationId),
     getAssociationRoles(associationId, { limit: 100 }),

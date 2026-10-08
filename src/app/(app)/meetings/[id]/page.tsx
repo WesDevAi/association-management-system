@@ -14,12 +14,13 @@ import { MeetingAttendees } from "../meeting-attendees";
 export default async function MeetingDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const resolvedParams = await params;
   const context = await requirePermission("meetings.manage");
   const associationId = context.membership.associationId;
 
-  const meeting = await getMeetingDetail(associationId, params.id);
+  const meeting = await getMeetingDetail(associationId, resolvedParams.id);
 
   if (!meeting) {
     notFound();

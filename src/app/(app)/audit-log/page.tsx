@@ -22,7 +22,7 @@ export const metadata = {
 export default async function AuditLogPage({
   searchParams,
 }: {
-  searchParams?: {
+  searchParams?: Promise<{
     search?: string;
     action?: string;
     entityType?: string;
@@ -30,21 +30,22 @@ export default async function AuditLogPage({
     dateFrom?: string;
     dateTo?: string;
     page?: string;
-  };
+  }>;
 }) {
+  const resolvedSearchParams = await searchParams;
   const context = await requirePermission(PERMISSIONS.AUDIT_LOG_VIEW);
   const associationId = context.membership.associationId;
 
-  const page = Number(searchParams?.page) || 1;
+  const page = Number(resolvedSearchParams?.page) || 1;
 
   const [logsResult, stats, actors, entityTypes] = await Promise.all([
     getAuditLogs(associationId, {
-      search: searchParams?.search,
-      action: searchParams?.action,
-      entityType: searchParams?.entityType,
-      userId: searchParams?.userId,
-      dateFrom: searchParams?.dateFrom,
-      dateTo: searchParams?.dateTo,
+      search: resolvedSearchParams?.search,
+      action: resolvedSearchParams?.action,
+      entityType: resolvedSearchParams?.entityType,
+      userId: resolvedSearchParams?.userId,
+      dateFrom: resolvedSearchParams?.dateFrom,
+      dateTo: resolvedSearchParams?.dateTo,
       page,
       limit: 20,
     }),
@@ -55,12 +56,12 @@ export default async function AuditLogPage({
 
   const buildUrl = (updates: Record<string, string | undefined>) => {
     const params = new URLSearchParams();
-    if (searchParams?.search) params.set("search", searchParams.search);
-    if (searchParams?.action) params.set("action", searchParams.action);
-    if (searchParams?.entityType) params.set("entityType", searchParams.entityType);
-    if (searchParams?.userId) params.set("userId", searchParams.userId);
-    if (searchParams?.dateFrom) params.set("dateFrom", searchParams.dateFrom);
-    if (searchParams?.dateTo) params.set("dateTo", searchParams.dateTo);
+    if (resolvedSearchParams?.search) params.set("search", resolvedSearchParams.search);
+    if (resolvedSearchParams?.action) params.set("action", resolvedSearchParams.action);
+    if (resolvedSearchParams?.entityType) params.set("entityType", resolvedSearchParams.entityType);
+    if (resolvedSearchParams?.userId) params.set("userId", resolvedSearchParams.userId);
+    if (resolvedSearchParams?.dateFrom) params.set("dateFrom", resolvedSearchParams.dateFrom);
+    if (resolvedSearchParams?.dateTo) params.set("dateTo", resolvedSearchParams.dateTo);
     for (const [key, value] of Object.entries(updates)) {
       if (value === undefined || value === "") {
         params.delete(key);
@@ -107,7 +108,7 @@ export default async function AuditLogPage({
                 id="search"
                 name="search"
                 placeholder="Search descriptions..."
-                defaultValue={searchParams?.search}
+                defaultValue={resolvedSearchParams?.search}
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -115,7 +116,7 @@ export default async function AuditLogPage({
               <select
                 id="entityType"
                 name="entityType"
-                defaultValue={searchParams?.entityType}
+                defaultValue={resolvedSearchParams?.entityType}
                 className="rounded-md border border-input bg-background px-3 py-2 text-sm"
               >
                 <option value="">All entities</option>
@@ -131,7 +132,7 @@ export default async function AuditLogPage({
               <select
                 id="userId"
                 name="userId"
-                defaultValue={searchParams?.userId}
+                defaultValue={resolvedSearchParams?.userId}
                 className="rounded-md border border-input bg-background px-3 py-2 text-sm"
               >
                 <option value="">All users</option>
@@ -147,7 +148,7 @@ export default async function AuditLogPage({
               <select
                 id="action"
                 name="action"
-                defaultValue={searchParams?.action}
+                defaultValue={resolvedSearchParams?.action}
                 className="rounded-md border border-input bg-background px-3 py-2 text-sm"
               >
                 <option value="">All actions</option>
@@ -164,7 +165,7 @@ export default async function AuditLogPage({
                 id="dateFrom"
                 name="dateFrom"
                 type="date"
-                defaultValue={searchParams?.dateFrom}
+                defaultValue={resolvedSearchParams?.dateFrom}
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -173,7 +174,7 @@ export default async function AuditLogPage({
                 id="dateTo"
                 name="dateTo"
                 type="date"
-                defaultValue={searchParams?.dateTo}
+                defaultValue={resolvedSearchParams?.dateTo}
               />
             </div>
             <div className="flex items-end gap-2">

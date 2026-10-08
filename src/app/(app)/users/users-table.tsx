@@ -1,12 +1,13 @@
 "use client";
 
 import { useTransition } from "react";
-import { Link2, Unlink } from "lucide-react";
+import { Link2, Unlink, Mail } from "lucide-react";
 import {
   updateMembershipRoleAction,
   updateMembershipStatusAction,
   linkUserAccountAction,
   unlinkUserAccountAction,
+  inviteMembershipAccountAction,
 } from "@/server/services/user-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +35,7 @@ export function UsersTable({
   const [isPending, startTransition] = useTransition();
   const [search, setSearch] = useState("");
   const [linkingId, setLinkingId] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     if (!search) return users;
@@ -108,8 +110,17 @@ export function UsersTable({
     });
   }
 
+  function handleInvite(membershipId: string) {
+    setNotice(null);
+    startTransition(async () => {
+      const result = await inviteMembershipAccountAction(membershipId);
+      setNotice("success" in result ? result.success : result.error);
+    });
+  }
+
   return (
     <div className="flex flex-col gap-4">
+      {notice && <p className="rounded-md border bg-muted/30 px-3 py-2 text-sm" role="status">{notice}</p>}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <Input
           placeholder="Search by name, email, or member #..."
@@ -211,19 +222,20 @@ export function UsersTable({
                           <Unlink className="size-4" />
                         </Button>
                       ) : (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            setLinkingId(
-                              linkingId === u.membershipId ? null : u.membershipId
-                            )
-                          }
-                          disabled={isPending}
-                          title="Link account"
-                        >
-                          <Link2 className="size-4" />
-                        </Button>
+                        <>
+                          <Button variant="ghost" size="sm" onClick={() => handleInvite(u.membershipId)} disabled={isPending || !u.email} title={u.email ? "Email account invitation" : "Add an email address before inviting"}>
+                            <Mail className="size-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setLinkingId(linkingId === u.membershipId ? null : u.membershipId)}
+                            disabled={isPending}
+                            title="Link existing account"
+                          >
+                            <Link2 className="size-4" />
+                          </Button>
+                        </>
                       )}
                     </div>
                   </td>

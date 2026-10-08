@@ -15,6 +15,8 @@ import {
 import { requirePermission } from "@/server/permissions/guards";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import { logAudit } from "@/server/services/audit-service";
+import { prisma } from "@/lib/prisma";
+import { accountLink, createAccountToken, hashToken, sendAccountEmail } from "@/server/auth/account-token";
 
 export type UserActionState = { error: string } | { success: string } | null;
 
@@ -161,4 +163,45 @@ export async function unlinkUserAccountAction(
   });
 
   return { success: "Account unlinked." };
+}
+
+export async function inviteMembershipAccountAction(membershipId: string): Promise<{ error: string } | { success: string }> {
+  const context = await requirePermission(PERMISSIONS.MEMBERS_MANAGE);
+  const associationId = context.membership.associationId;
+  const membership = await prisma.membership.findFirst({
+    where: { id: membershipId, associationId },
+    include: { association: { select: { name: true } } },
+  });
+  if (!membership) return { error: "Membership not found." };
+  if (membership.userId) return { error: "This membership already has an account." };
+  const email = membership.email?.trim().toLowerCase();
+  if (!email) return { error: "Add an email address to this membership before inviting them." };
+  if (await prisma.user.findUnique({ where: { email }, select: { id: true } })) {
+    return { error: "An account already uses this email. Use Link account to connect it." };
+  }
+
+  const token = await createAccountToken({
+    type: "MEMBERSHIP_INVITE", email, membershipId: membership.id, lifetimeMs: 7 * 24 * 60 * 60 * 1000,
+  });
+  const link = accountLink("/accept-invitation", token);
+  try {
+    await sendAccountEmail({
+      to: email,
+      subject: `Your ${membership.association.name} account invitation`,
+      text: `You have been invited to access ${membership.association.name}. Set your password using this one-time link. It expires in 7 days.\n\n${link}`,
+    });
+  } catch (error) {
+    await prisma.accountToken.updateMany({ where: { tokenHash: hashToken(token), consumedAt: null }, data: { consumedAt: new Date() } });
+    return { error: error instanceof Error ? error.message : "Email could not be sent." };
+  }
+
+  await logAudit({
+    associationId,
+    userId: context.user.id,
+    action: "user.invited",
+    entityType: "membership",
+    entityId: membership.id,
+    metadata: { email },
+  });
+  return { success: `Invitation sent to ${email}.` };
 }

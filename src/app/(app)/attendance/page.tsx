@@ -13,8 +13,9 @@ import { AttendanceMeetingSelector } from "./attendance-meeting-selector";
 export default async function AttendancePage({
   searchParams,
 }: {
-  searchParams?: { meetingId?: string };
+  searchParams?: Promise<{ meetingId?: string }>;
 }) {
+  const resolvedSearchParams = await searchParams;
   const context = await requirePermission("attendance.record");
   const associationId = context.membership.associationId;
 
@@ -22,7 +23,7 @@ export default async function AttendancePage({
   const allMeetings = await getMeetings(associationId);
 
   // Determine which meeting to show
-  let meetingId = searchParams?.meetingId;
+  let meetingId = resolvedSearchParams?.meetingId;
 
   // If no meetingId specified, find the next upcoming meeting
   if (!meetingId) {

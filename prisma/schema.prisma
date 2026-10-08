@@ -28,6 +28,11 @@ enum UserStatus {
   DEACTIVATED
 }
 
+enum AccountTokenType {
+  PASSWORD_RESET
+  MEMBERSHIP_INVITE
+}
+
 enum AssociationType {
   CLUB
   UNION
@@ -231,8 +236,28 @@ model User {
   appointedExecutives ExecutiveAppointment[]   @relation("ExecutiveAppointedBy")
   auditLogs          AuditLog[]
   notifications      Notification[]
+  accountTokens      AccountToken[]
 
   @@index([email])
+}
+
+model AccountToken {
+  id           String           @id @default(cuid())
+  type         AccountTokenType
+  email        String
+  tokenHash    String           @unique
+  membershipId String?
+  userId       String?
+  expiresAt    DateTime
+  consumedAt   DateTime?
+  createdAt    DateTime         @default(now())
+
+  membership Membership? @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  user       User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([email, type, createdAt])
+  @@index([membershipId, type, consumedAt])
+  @@index([expiresAt])
 }
 
 // ============================================================================
@@ -368,6 +393,7 @@ model Membership {
   fines                 Fine[]
   eventRegistrations    EventRegistration[]
   resultingApplication  MembershipApplication?
+  accountTokens         AccountToken[]
 
   // NOTE on nullable userId + this unique constraint: Postgres treats every
   // NULL as distinct for uniqueness purposes, so multiple account-less

@@ -10,24 +10,25 @@ import { CalendarDays, Users, CheckCircle, XCircle } from "lucide-react";
 export default async function EventsPage({
   searchParams,
 }: {
-  searchParams?: {
+  searchParams?: Promise<{
     search?: string;
     status?: string;
     sort?: string;
     order?: string;
     page?: string;
-  };
+  }>;
 }) {
+  const resolvedSearchParams = await searchParams;
   const context = await requirePermission(PERMISSIONS.EVENTS_MANAGE);
   const associationId = context.membership.associationId;
 
   const [result, stats] = await Promise.all([
     getEvents(associationId, {
-      search: searchParams?.search,
-      status: searchParams?.status,
-      sort: searchParams?.sort,
-      order: searchParams?.order,
-      page: searchParams?.page ? parseInt(searchParams.page) : 1,
+      search: resolvedSearchParams?.search,
+      status: resolvedSearchParams?.status,
+      sort: resolvedSearchParams?.sort,
+      order: resolvedSearchParams?.order,
+      page: resolvedSearchParams?.page ? parseInt(resolvedSearchParams.page) : 1,
     }),
     getEventStats(associationId),
   ]);

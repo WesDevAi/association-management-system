@@ -11,23 +11,24 @@ import Link from "next/link";
 export default async function MembersPage({
   searchParams,
 }: {
-  searchParams?: {
+  searchParams?: Promise<{
     search?: string;
     status?: string;
     branchId?: string;
     page?: string;
-  };
+  }>;
 }) {
+  const resolvedSearchParams = await searchParams;
   const context = await requirePermission("members.view");
   const associationId = context.membership.associationId;
 
-  const page = Number(searchParams?.page) || 1;
+  const page = Number(resolvedSearchParams?.page) || 1;
 
   const [result, stats, branches] = await Promise.all([
     getMembers(associationId, {
-      search: searchParams?.search,
-      status: searchParams?.status,
-      branchId: searchParams?.branchId,
+      search: resolvedSearchParams?.search,
+      status: resolvedSearchParams?.status,
+      branchId: resolvedSearchParams?.branchId,
       page,
       limit: 50,
     }),
@@ -41,9 +42,9 @@ export default async function MembersPage({
 
   const buildUrl = (updates: Record<string, string | undefined>) => {
     const params = new URLSearchParams();
-    if (searchParams?.search) params.set("search", searchParams.search);
-    if (searchParams?.status) params.set("status", searchParams.status);
-    if (searchParams?.branchId) params.set("branchId", searchParams.branchId);
+    if (resolvedSearchParams?.search) params.set("search", resolvedSearchParams.search);
+    if (resolvedSearchParams?.status) params.set("status", resolvedSearchParams.status);
+    if (resolvedSearchParams?.branchId) params.set("branchId", resolvedSearchParams.branchId);
     for (const [key, value] of Object.entries(updates)) {
       if (value === undefined || value === "") {
         params.delete(key);
@@ -74,7 +75,7 @@ export default async function MembersPage({
               id="search"
               name="search"
               placeholder="Name, email, or member #"
-              defaultValue={searchParams?.search}
+              defaultValue={resolvedSearchParams?.search}
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -82,7 +83,7 @@ export default async function MembersPage({
             <select
               id="status"
               name="status"
-              defaultValue={searchParams?.status}
+              defaultValue={resolvedSearchParams?.status}
               className="rounded-md border border-input bg-background px-3 py-2 text-sm"
             >
               <option value="">All statuses</option>
@@ -97,7 +98,7 @@ export default async function MembersPage({
             <select
               id="branchId"
               name="branchId"
-              defaultValue={searchParams?.branchId}
+              defaultValue={resolvedSearchParams?.branchId}
               className="rounded-md border border-input bg-background px-3 py-2 text-sm"
             >
               <option value="">All branches</option>

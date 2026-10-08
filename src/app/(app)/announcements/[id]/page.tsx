@@ -28,12 +28,13 @@ const audienceLabels: Record<string, string> = {
 export default async function AnnouncementDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const resolvedParams = await params;
   const context = await requirePermission(PERMISSIONS.ANNOUNCEMENTS_MANAGE);
   const associationId = context.membership.associationId;
 
-  const announcement = await getAnnouncement(associationId, params.id);
+  const announcement = await getAnnouncement(associationId, resolvedParams.id);
 
   if (!announcement) {
     notFound();

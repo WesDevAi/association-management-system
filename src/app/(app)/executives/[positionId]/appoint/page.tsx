@@ -10,13 +10,14 @@ import { AppointExecutiveForm } from "./appoint-form";
 export default async function AppointPage({
   params,
 }: {
-  params: { positionId: string };
+  params: Promise<{ positionId: string }>;
 }) {
+  const resolvedParams = await params;
   const context = await requirePermission(PERMISSIONS.EXECUTIVES_MANAGE);
   const associationId = context.membership.associationId;
 
   const [position, { members }] = await Promise.all([
-    getExecutivePosition(associationId, params.positionId),
+    getExecutivePosition(associationId, resolvedParams.positionId),
     getMembers(associationId),
   ]);
 

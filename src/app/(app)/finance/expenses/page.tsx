@@ -10,7 +10,7 @@ import { TrendingUp, Calendar, Tag } from "lucide-react";
 export default async function ExpensesPage({
   searchParams,
 }: {
-  searchParams?: {
+  searchParams?: Promise<{
     search?: string;
     category?: string;
     method?: string;
@@ -19,21 +19,22 @@ export default async function ExpensesPage({
     sort?: string;
     order?: string;
     page?: string;
-  };
+  }>;
 }) {
+  const resolvedSearchParams = await searchParams;
   const context = await requirePermission(PERMISSIONS.EXPENSES_VIEW);
   const associationId = context.membership.associationId;
 
   const [result, categories, stats] = await Promise.all([
     getExpenses(associationId, {
-      search: searchParams?.search,
-      categoryId: searchParams?.category,
-      paymentMethod: searchParams?.method,
-      dateFrom: searchParams?.dateFrom,
-      dateTo: searchParams?.dateTo,
-      sort: searchParams?.sort,
-      order: searchParams?.order,
-      page: searchParams?.page ? parseInt(searchParams.page) : 1,
+      search: resolvedSearchParams?.search,
+      categoryId: resolvedSearchParams?.category,
+      paymentMethod: resolvedSearchParams?.method,
+      dateFrom: resolvedSearchParams?.dateFrom,
+      dateTo: resolvedSearchParams?.dateTo,
+      sort: resolvedSearchParams?.sort,
+      order: resolvedSearchParams?.order,
+      page: resolvedSearchParams?.page ? parseInt(resolvedSearchParams.page) : 1,
     }),
     getExpenseCategories(associationId),
     getExpenseStats(associationId),

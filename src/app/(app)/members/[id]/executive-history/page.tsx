@@ -27,14 +27,15 @@ const typeLabels: Record<string, string> = {
 export default async function MemberExecutiveHistoryPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const resolvedParams = await params;
   const context = await requirePermission(PERMISSIONS.MEMBERS_VIEW);
   const associationId = context.membership.associationId;
 
   const [member, history] = await Promise.all([
-    getMemberDetail(associationId, params.id),
-    getMemberExecutiveHistory(associationId, params.id),
+    getMemberDetail(associationId, resolvedParams.id),
+    getMemberExecutiveHistory(associationId, resolvedParams.id),
   ]);
 
   if (!member) {

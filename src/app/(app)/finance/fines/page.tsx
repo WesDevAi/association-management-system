@@ -8,14 +8,15 @@ import { IssueFineForm } from "./issue-fine-form";
 export default async function FinesPage({
   searchParams,
 }: {
-  searchParams?: { status?: string };
+  searchParams?: Promise<{ status?: string }>;
 }) {
+  const resolvedSearchParams = await searchParams;
   const context = await requirePermission(PERMISSIONS.FINANCE_VIEW);
   const associationId = context.membership.associationId;
 
   const [fines, { members }] = await Promise.all([
     getFines(associationId, {
-      status: searchParams?.status,
+      status: resolvedSearchParams?.status,
     }),
     getMembers(associationId),
   ]);

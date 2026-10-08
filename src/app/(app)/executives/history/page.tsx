@@ -6,15 +6,16 @@ import { HistoryTable } from "./history-table";
 export default async function ExecutiveHistoryPage({
   searchParams,
 }: {
-  searchParams?: { status?: string; positionId?: string; type?: string };
+  searchParams?: Promise<{ status?: string; positionId?: string; type?: string }>;
 }) {
+  const resolvedSearchParams = await searchParams;
   const context = await requirePermission(PERMISSIONS.EXECUTIVES_MANAGE);
   const associationId = context.membership.associationId;
 
   const history = await getAppointmentHistory(associationId, {
-    status: searchParams?.status as "ACTIVE" | "COMPLETED" | "REMOVED" | "RESIGNED" | "SUSPENDED" | undefined,
-    positionId: searchParams?.positionId,
-    appointmentType: searchParams?.type as "ELECTED" | "APPOINTED" | "ACTING" | "INTERIM" | undefined,
+    status: resolvedSearchParams?.status as "ACTIVE" | "COMPLETED" | "REMOVED" | "RESIGNED" | "SUSPENDED" | undefined,
+    positionId: resolvedSearchParams?.positionId,
+    appointmentType: resolvedSearchParams?.type as "ELECTED" | "APPOINTED" | "ACTING" | "INTERIM" | undefined,
   });
 
   return (

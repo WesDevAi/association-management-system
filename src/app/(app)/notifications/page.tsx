@@ -8,21 +8,22 @@ import { Bell, BellOff, CheckCircle } from "lucide-react";
 export default async function NotificationsPage({
   searchParams,
 }: {
-  searchParams?: {
+  searchParams?: Promise<{
     type?: string;
     associationId?: string;
     search?: string;
     page?: string;
-  };
+  }>;
 }) {
+  const resolvedSearchParams = await searchParams;
   const user = await requireAuth();
 
   const [result, stats, associations] = await Promise.all([
     getNotifications(user.id, {
-      type: searchParams?.type,
-      associationId: searchParams?.associationId,
-      search: searchParams?.search,
-      page: searchParams?.page ? parseInt(searchParams.page) : 1,
+      type: resolvedSearchParams?.type,
+      associationId: resolvedSearchParams?.associationId,
+      search: resolvedSearchParams?.search,
+      page: resolvedSearchParams?.page ? parseInt(resolvedSearchParams.page) : 1,
     }),
     getNotificationStats(user.id),
     getUserAssociations(user.id),

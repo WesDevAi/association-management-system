@@ -23,3 +23,17 @@ export const registerSchema = z.object({
 });
 
 export type RegisterInput = z.infer<typeof registerSchema>;
+
+export const requestPasswordResetSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Enter a valid email address"),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(32).max(200),
+  password: z.string().min(8, "Password must be at least 8 characters").max(100),
+});
+
+export const acceptMembershipInviteSchema = z.object({
+  token: z.string().min(32).max(200),
+  password: z.string().min(8, "Password must be at least 8 characters").max(100),
+});

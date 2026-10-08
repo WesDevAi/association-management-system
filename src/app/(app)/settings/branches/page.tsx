@@ -10,20 +10,21 @@ import { Button } from "@/components/ui/button";
 export default async function BranchesPage({
   searchParams,
 }: {
-  searchParams?: {
+  searchParams?: Promise<{
     search?: string;
     status?: string;
     page?: string;
-  };
+  }>;
 }) {
+  const resolvedSearchParams = await searchParams;
   const context = await requirePermission(PERMISSIONS.BRANCHES_MANAGE);
   const associationId = context.membership.associationId;
 
   const [result, stats] = await Promise.all([
     getBranches(associationId, {
-      search: searchParams?.search,
-      status: searchParams?.status,
-      page: searchParams?.page ? parseInt(searchParams.page) : 1,
+      search: resolvedSearchParams?.search,
+      status: resolvedSearchParams?.status,
+      page: resolvedSearchParams?.page ? parseInt(resolvedSearchParams.page) : 1,
     }),
     getBranchStats(associationId),
   ]);

@@ -9,12 +9,13 @@ import { FinanceReportExport } from "../finance-report-export";
 export default async function QuarterlyReportPage({
   searchParams,
 }: {
-  searchParams?: { year?: string };
+  searchParams?: Promise<{ year?: string }>;
 }) {
+  const resolvedSearchParams = await searchParams;
   const context = await requirePermission(PERMISSIONS.FINANCE_REPORTS_VIEW);
   const associationId = context.membership.associationId;
 
-  const year = searchParams?.year ? parseInt(searchParams.year) : new Date().getFullYear();
+  const year = resolvedSearchParams?.year ? parseInt(resolvedSearchParams.year) : new Date().getFullYear();
   const quarters = await getQuarterlyTotals(associationId, year);
 
   const totalIncome = quarters.reduce((sum, q) => sum + Number(q.income), 0);
